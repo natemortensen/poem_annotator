@@ -1,0 +1,11 @@
+<p id="notice"><%= notice %></p>
+
+<h4><%= @poem.title %></h4>
+
+
+<p>
+  <%= simple_format @poem.content %>
+</p>
+
+<%= link_to 'Edit', edit_poem_path(@poem) %> |
+<%= link_to 'Back', poems_path %>
