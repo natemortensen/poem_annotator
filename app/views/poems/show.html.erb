@@ -1,11 +1,20 @@
-<p id="notice"><%= notice %></p>
+<div class="row">
+	<div class="large-8 columns">
+		<p id="notice"><%= notice %></p>
 
-<h4><%= @poem.title %></h4>
+		<h4><%= @poem.title %></h4>
 
+		<div id="poem" class="annotatable">
+		  <%= @poem.content.html_safe %>
+		</div>
 
-<p>
-  <%= simple_format @poem.content %>
-</p>
+		<%= link_to 'Edit', edit_poem_path(@poem) %> |
+		<%= link_to 'Back', poems_path %>
+	</div>
 
-<%= link_to 'Edit', edit_poem_path(@poem) %> |
-<%= link_to 'Back', poems_path %>
+	<div class="large-4 columns">
+		<%= button_tag 'Remove All Annotations', class: 'annotate-removeall button alert' %>
+		<h2>Annotations</h2>
+    <ul id="annotations"></ul>
+	</div>
+</div>

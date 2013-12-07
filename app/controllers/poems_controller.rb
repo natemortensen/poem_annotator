@@ -24,7 +24,9 @@ class PoemsController < ApplicationController
   # POST /poems
   # POST /poems.json
   def create
-    @poem = Poem.new(poem_params)
+    attributes = poem_params
+    attributes[:content] = attributes[:content].gsub(/\n/, '<br/>')
+    @poem = Poem.new(attributes)
 
     respond_to do |format|
       if @poem.save
@@ -41,7 +43,7 @@ class PoemsController < ApplicationController
   # PATCH/PUT /poems/1.json
   def update
     respond_to do |format|
-      if @poem.update(poem_params)
+      if @poem.update_attribute :content, poem_params['content']
         format.html { redirect_to @poem, notice: 'Poem was successfully updated.' }
         format.json { head :no_content }
       else

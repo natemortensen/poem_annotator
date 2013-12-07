@@ -1,0 +1,23 @@
+mark.annotated {background: rgba(239, 204, 0, 0.30);}
+mark.annotated.selected,
+mark.annotated.selected .annotated {background: yellow;}
+mark.temp {background: #92A1CF;}
+mark.hidden { background: none; }
+
+.annotate-annotation { 
+	position: static;
+	font-size: 12px;
+	z-index: 100;
+}
+
+.annotate-annotation.selected {background: yellow; z-index: 105;}
+.annotate-annotation.hidden { display: none; }
+
+dt.annotate_id, dd.annotate-fill-annotate_id { display: none; }
+
+.annotate-dialog {
+    position: absolute;
+    display: block;
+    font-size: 12px;
+    z-index: 110;
+}

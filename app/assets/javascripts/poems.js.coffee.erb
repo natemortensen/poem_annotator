@@ -1,0 +1,37 @@
+# Place all the behaviors and hooks related to the matching controller here.
+# All this logic will automatically be available in application.js.
+# You can use CoffeeScript in this file: http://coffeescript.org/
+
+updatePoem = (article_html) ->
+	$.ajax
+	  type: "PATCH"
+	  url: window.location.pathname
+	  data:
+	  	poem:
+	  		content: article_html
+	  success: ->
+	  	true
+	  dataType: 'json'
+
+afterAnnotationRender = ($annotation) ->
+	$annotatable_element = $(this)
+	$annotation.unbind('click').click -> 
+		$annotatable_element.annotate('remove', $annotation)
+	$("span", $annotation).unbind('click').click (event) ->
+		event.stopPropagation()
+
+
+$ ->
+	$('#poem.annotatable').annotate
+		annotation:
+			container: $('ul#annotations')[0]
+			position: null
+			template: '<span class="annotate-fill-content"></span>'
+			tag_name: 'li'
+			afterRender: afterAnnotationRender
+		article:
+			update: updatePoem
+		dialog:
+			template: '<form><div class="row"><label for="content">Content</label></div><div class="row"><input name="content"></input></div><div class="row"><button type="submit" class="tiny">Add Annotation</button><button type="button" class="annotate-cancel button secondary tiny">Cancel</button></div></form>'
+			class: 'panel radius'
+			offset_amount: 40

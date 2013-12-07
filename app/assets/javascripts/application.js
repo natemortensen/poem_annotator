@@ -13,7 +13,9 @@
 //= require jquery
 //= require jquery_ujs
 //= require foundation
-//= require turbolinks
+//= require rangy-core
+//= require rangy-cssclassapplier
+//= require jquery.annotate
 //= require_tree .
 
-$(function(){ $(document).foundation(); });
+jQuery(function(){ $(document).foundation(); });
