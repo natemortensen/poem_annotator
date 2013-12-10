@@ -8,12 +8,11 @@
 		  <%= @poem.content.html_safe %>
 		</div>
 
-		<%= link_to 'Edit', edit_poem_path(@poem) %> |
-		<%= link_to 'Back', poems_path %>
+		
 	</div>
 
 	<div class="large-4 columns">
-		<%= button_tag 'Remove All Annotations', class: 'annotate-removeall button alert' %>
+		<%= link_to 'Back', poems_path, class: 'button secondary small' %> <%= button_tag 'Remove All Annotations', class: 'annotate-removeall button alert small' %>
 		<h2>Annotations</h2>
     <ul id="annotations"></ul>
 	</div>

@@ -94,16 +94,26 @@
       ++i
     array.join " "
 
+  sendArticle = ($annotatable_element) ->
+    settings = $annotatable_element.data()
+
+    if typeof settings.article.update is "function"
+      $annotatable_element.children('mark').addClass('hidden')
+      settings.article.update.apply($annotatable_element[0], [$annotatable_element.html()])
+      $annotatable_element.children('mark').removeClass('hidden')
+
   toCamel = (obj = {}) ->
     new_obj = {}
     $.each obj, (key, value) ->
       fixed_key = $.camelCase(key)
       new_obj[fixed_key] = value
+
+
   
   methods =
 
     init: (options) ->
-      window.$annotatable_element = $(this)
+      $annotatable_element = $(this)
       settings = $annotatable_element.data()
 
       # initialize rangy and a marker if not present
@@ -111,7 +121,7 @@
         rangy.init()
         settings.tempMarker = rangy.createCssClassApplier("temp",
           normalize: true
-          elementTagName: 'mark'
+          elementTagName: 'tempmark'
         )
 
       # default plugin settings
@@ -149,10 +159,9 @@
           allow_remove: true                                            # Boolean, determines whether the user can remove annotations and the associated marks from the DOM
           existing_data: {}                                             # [{annotation1}, {annotation2}], Array of annotation data in JSON format. Keys should be "camelCased"
           include_time: false                                           # Boolean, determines whether Date.toString() will be included as part of the annotation JSON object
-          include_context: true                                         # Boolean, determines whether the selected text will be included as part of the annotation JSON object
           render_from_marks: true                                       # Boolean, determines whether annotations will be rendered on initilization from existing marks in article
         article:
-          update: -> true                                               # Function(article_html), called whenever a permanent mark is added or removed to the article
+          update: null                                                  # Function(article_html), called whenever a permanent mark is added or removed to the article
         mark:
           trigger_type: 'hover'                                         # 'select' | 'click' | null, specifies which type of event triggers the onTrigger and offTrigger callbacks
           onTrigger: methods['_defaultOnTrigger']                       # Function($marks, $annotation), called the user enters the top-level mark, depending on the trigger 
@@ -185,8 +194,7 @@
 
       # display warnings unless explicitly ignored
       unless settings.ignore_warnings
-        if settings.article.update is methods['_updateArticle']
-          console.warn "It is highly recommended that you set a callback for updating the article"
+        console.warn "It is highly recommended that you set a callback for updating the article" if settings.article.update is methods['_updateArticle']
 
     # default callback for rendering annotation dialog
     _createDialog: ->
@@ -204,9 +212,10 @@
     _renderAnnotation: (data) ->
       $annotatable_element = $(this)
       settings = $(this).data()
+      annotate_id = data.annotation.annotate_id || data.annotation.annotateId
 
       if $.inArray(data.status, ['success', '200', 200]) > -1
-        $mark = $("mark[data-annotate-id=#{data.annotation.annotate_id || data.annotation.annotateId}]:first", this)
+        $mark = $("mark[data-annotate-id=#{annotate_id}]:first", this)
 
         if settings.annotation.template?
           annotation_innerHtml = settings.annotation.template
@@ -219,14 +228,18 @@
             $.each annotation_attr, (key, value) -> data_html += "<dt class='#{key}'>#{titleize(key)}</dt><dd class='annotate-fill-#{key}'></dd>"
             annotation_innerHtml = "<dl>#{data_html}</dl> <button type='button' class='annotate-remove'>Remove</button>"
 
-        annotation_html = "<#{settings.annotation.tag_name} class='annotate-annotation#{' ' + settings.annotation.class}' data-annotate-id='#{data.annotation.annotate_id || data.annotation.annotateId}'>#{annotation_innerHtml}</#{settings.annotation.tag_name}>"
-        $(settings.annotation.container).append annotation_html
-        $annotation = $(".annotate-annotation:last", settings.annotation.container)
+        annotation_html = "<#{settings.annotation.tag_name} class='annotate-annotation#{' ' + settings.annotation.class}' data-annotate-id='#{annotate_id}' data-annotatable-id='#{settings._annotatable_id}'>#{annotation_innerHtml}</#{settings.annotation.tag_name}>"
+        
+        if $annotatable_element.annotate('select', annotate_id, 'mark')[0]? && settings.annotation.position?
+          $('body').append(annotation_html)
+        else
+          $(settings.annotation.container).append annotation_html
+
+        $annotation = $(".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]:last")
 
         $.each $mark.data() || data.annotation, (key, value) -> 
-
-          $annotation_data = $(".annotate-fill-#{key}", $annotation[0])
-          $annotation_data.prepend(value)
+          $attr_field = $(".annotate-fill-#{key}", $annotation[0])
+          $attr_field.prepend(value)
         $annotatable_element.annotate 'position', $annotation
         true
       else
@@ -246,7 +259,7 @@
     _defaultOffTrigger: ($marks, $annotation) ->
       settings = $(this).data()
 
-      $('mark, .annotate-annotation').removeClass('selected')
+      $marks.add($annotation).removeClass('selected')
       if $.inArray(settings.annotation.position, ['top', 'bottom']) > -1
 
         settings._timer =
@@ -267,6 +280,7 @@
         $marks = $("mark[data-annotate-id=#{$mark.data('annotate-id')}]")
       else
         $marks = $('mark.annotated', $annotatable_element[0])
+      
       $annotations = $annotatable_element.annotate('associated', $marks)
 
       # bind marks based on trigger type
@@ -274,18 +288,28 @@
         switch settings.mark.trigger_type
           when 'hover'
             $marks.unbind('mouseenter mouseleave').hover((e) ->
-              $children = $(e.currentTarget).children('mark.annotated')
-              if $children.length == 0
-                root_hover = true
-              else
-                hovered = 0
-                for child in $children
-                  hovered++ if $(child).is(':hover')
-                root_hover = hovered == 0 ? true : false
+              hover_target = e.currentTarget
+              parents = $(this).parents('mark.annotated')
+              $mark = if parents[parents.length-1]? then $(parents[parents.length-1]) else $(this)
+              context_lengths = []
+              hovered = [$mark[0]]
+              annotate_id = undefined
+              context_lengths.push $mark.data('annotate-context').length
+              $mark.children('mark.annotated').each -> 
+                if $(this).is(':hover')
+                  context_lengths.push $(this).data('annotate-context').length
+                  hovered.push this
 
-              if root_hover == true && typeof settings.mark.onTrigger is "function"
-                $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-                settings.mark.onTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
+              min_length = Math.min.apply Math, context_lengths
+
+              $(hovered).each ->
+                if $(this).data('annotate-context').length == min_length && typeof settings.mark.onTrigger is "function" && this == hover_target
+                  top_mark_id = $(this).data('annotate-id')
+                  $selected_marks = $annotatable_element.annotate('select', top_mark_id, 'mark')
+                  params = [$selected_marks[0], $annotatable_element.annotate('associated', $selected_marks)[0]]
+                  settings.mark.onTrigger.apply $annotatable_element[0], [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
+                  return false
+
             , (e) ->
               annotate_id = $(e.currentTarget).data('annotate-id')
               $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
@@ -293,7 +317,7 @@
                 settings.mark.offTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
             )
       
-      # bind marks based on trigger type
+      # bind annotations based on trigger type
       if $annotations[0]? && settings.annotation.trigger_type?
         switch settings.annotation.trigger_type
           when 'hover'
@@ -350,7 +374,7 @@
         if $marks.length > 0
           $marks.contents().unwrap()
           $(".annotate-annotation[data-annotate-id=#{annotate_id}]").remove()
-          settings.article.update.apply(this, [$(this).html()]) if typeof settings.article.update is "function"
+          sendArticle($annotatable_element)
           settings.annotation.delete.apply(this, [annotate_id]) if typeof settings.annotation.delete is "function"
 
     # remove all annotations and associated marks from DOM and call delete_annotations callback
@@ -364,7 +388,7 @@
           annotate_ids.push annotate_id
           $(this).contents().unwrap()
           $(".annotate-annotation[data-annotate-id=#{annotate_id}]").remove()
-        settings.article.update.apply(this, [$(this).html()]) if typeof settings.article.update is "function"
+        sendArticle $(this)
         settings.annotation.delete.apply(this, annotate_ids) if typeof settings.annotation.delete is "function"
 
     # select elements by data-annotate-id attribute
@@ -451,6 +475,7 @@
       settings = $annotatable_element.data()
 
       # get selected text
+      
       sel = rangy.getSelection()
       if sel.rangeCount > 0 && (selected_text = sel.toString()) != ''
         range = sel.getRangeAt(0)
@@ -466,6 +491,10 @@
           # mark selected text and deselect
           settings.tempMarker.applyToSelection()
           sel.removeAllRanges()
+
+          # replace tempmark with mark.temp to avoid issues with overlapping marks generated by rangy
+          $('tempmark').wrap('<mark class="temp"></mark>')
+          $('mark.temp tempmark').contents().unwrap()
 
           # render annotation dialog and callbacks
           settings.dialog.beforeCreate.apply($annotatable_element[0]) if typeof settings.dialog.beforeCreate is "function"
@@ -483,7 +512,6 @@
               annotate_id: generateAnnotateId()
               annotate_context: selected_text
               annotate_time: getCurrentTime()
-            delete extras.annotate_context unless settings.annotation.include_context
             delete extras.annotate_time unless settings.annotation.include_time
 
             form_data = serializeObject(this, extras)
@@ -499,10 +527,11 @@
               $annotation = $annotatable_element.annotate 'associated', $marks
               settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
               $marks.addClass('annotated').removeClass('temp')
-              $annotatable_element.annotate('cancel')
 
-              if typeof settings.article.update is "function" && settings.article.update.apply($annotatable_element, [$annotatable_element.html()])
-                $annotatable_element.annotate('_bindEvents', $marks)
+              $annotatable_element.annotate('cancel')
+              sendArticle($annotatable_element)
+              $annotatable_element.annotate('_bindEvents', $marks)
+
         else settings.dialog.outsideSelection()
       else $annotatable_element.annotate('cancel')
 

@@ -1,5 +1,5 @@
 PoemAnnotator::Application.routes.draw do
-  resources :poems
+  resources :poems, except: [:edit]
   root to: 'poems#index'
 
   # The priority is based upon order of creation: first created -> highest priority.
