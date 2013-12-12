@@ -2,7 +2,7 @@ mark.annotated {background: rgba(239, 204, 0, 0.30);}
 mark.annotated.selected,
 mark.annotated.selected .annotated {background: yellow;}
 mark.temp {background: #92A1CF;}
-mark.hidden { background: none; }
+mark.annotate-hidden { background: none; }
 
 .annotate-annotation { 
 	position: static;

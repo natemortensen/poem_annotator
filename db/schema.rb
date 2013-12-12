@@ -11,10 +11,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20131207162120) do
+ActiveRecord::Schema.define(version: 20131211165738) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "annotations", force: true do |t|
+    t.string   "annotate_id"
+    t.text     "annotate_context"
+    t.text     "content"
+    t.integer  "user_id"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
 
   create_table "poems", force: true do |t|
     t.string   "title"

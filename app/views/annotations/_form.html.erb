@@ -1,0 +1,33 @@
+<%= form_for(@annotation) do |f| %>
+  <% if @annotation.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@annotation.errors.count, "error") %> prohibited this annotation from being saved:</h2>
+
+      <ul>
+      <% @annotation.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :annotate_id %><br>
+    <%= f.text_field :annotate_id %>
+  </div>
+  <div class="field">
+    <%= f.label :context %><br>
+    <%= f.text_area :context %>
+  </div>
+  <div class="field">
+    <%= f.label :content %><br>
+    <%= f.text_area :content %>
+  </div>
+  <div class="field">
+    <%= f.label :user_id %><br>
+    <%= f.number_field :user_id %>
+  </div>
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>

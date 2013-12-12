@@ -3,22 +3,57 @@
 # You can use CoffeeScript in this file: http://coffeescript.org/
 
 updatePoem = (article_html) ->
+	response = false
 	$.ajax
 	  type: "PATCH"
+	  async: false
 	  url: window.location.pathname
 	  data:
 	  	poem:
 	  		content: article_html
-	  success: ->
-	  	true
+	  success: -> response = true
 	  dataType: 'json'
+  response
 
 afterAnnotationRender = ($annotation) ->
 	$annotatable_element = $(this)
 	$annotation.unbind('click').click -> 
 		$annotatable_element.annotate('remove', $annotation)
-	$("span", $annotation).unbind('click').click (event) ->
-		event.stopPropagation()
+	$("span", $annotation).unbind('click').click (event) -> event.stopPropagation()
+
+getAnnotations = ->	
+	response = []
+	$.ajax
+	  dataType: "json"
+	  async: false
+	  url: window.location.pathname + '/annotations'
+	  success: (data) -> response = data
+  response
+
+deleteAnnotations = (annotate_ids) ->
+  successful = []
+  $.each annotate_ids, (i, annotate_id) ->
+    $.ajax
+      type: "DELETE"
+      async: false
+      url: window.location.pathname + "/annotations/" + annotate_id
+      dataType: "json"
+      success: ->
+        successful.push annotate_ids
+  successful
+
+saveAnnotation = (data) ->
+	response = {}
+	$.ajax
+		type: "POST"
+		async: false
+		url: window.location.pathname + '/annotations'
+		data: data
+		success: (json) ->
+			response['annotation'] = json
+			response['status'] = 'success'
+		dataType: 'json'
+	response
 
 
 $ ->
@@ -29,9 +64,13 @@ $ ->
 			template: '<span class="annotate-fill-content"></span>'
 			tag_name: 'li'
 			afterRender: afterAnnotationRender
+			render_from_marks: false
+			existing_data: getAnnotations()
+			save: saveAnnotation
+			delete: deleteAnnotations
 		article:
 			update: updatePoem
 		dialog:
-			template: '<form><div class="row"><label for="content">Content</label></div><div class="row"><input name="content"></input></div><div class="row"><button type="submit" class="tiny">Add Annotation</button><button type="button" class="annotate-cancel button secondary tiny">Cancel</button></div></form>'
+			template: '<form><div class="row"><div class="errors"></div><label for="content">Content</label></div><div class="row"><input name="content"></input></div><div class="row"><button type="submit" class="tiny">Add Annotation</button><button type="button" class="annotate-cancel button secondary tiny">Cancel</button></div></form>'
 			class: 'panel radius'
 			offset_amount: 40

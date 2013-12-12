@@ -80,7 +80,7 @@
     randomstring
 
   # get the annotation id from an element, or its parent(s)
-  getAnnotateId = ($element) ->
+  window.getAnnotateId = ($element) ->
     $element.data('annotate-id') || $element.parent('*[data-annotate-id!=undefined]').data('annotate-id')
 
   titleize = (str) ->
@@ -94,19 +94,25 @@
       ++i
     array.join " "
 
+  hasAssociated = ($annotatable_element, $object) ->
+    $annotatable_element.annotate('associated', $object)[0]?
+
   sendArticle = ($annotatable_element) ->
     settings = $annotatable_element.data()
 
     if typeof settings.article.update is "function"
-      $annotatable_element.children('mark').addClass('hidden')
+      $annotatable_element.children('mark').addClass('annotate-hidden')
       settings.article.update.apply($annotatable_element[0], [$annotatable_element.html()])
-      $annotatable_element.children('mark').removeClass('hidden')
+      $annotatable_element.children('mark').each ->
+        $(this).removeClass('annotate-hidden') if hasAssociated $annotatable_element, $(this)
 
-  toCamel = (obj = {}) ->
+  camelizeObject = (obj = {}) ->
     new_obj = {}
     $.each obj, (key, value) ->
-      fixed_key = $.camelCase(key)
+      fixed_key = key.replace /([\-\_][a-z])/g, ($1) ->
+        $1.toUpperCase().replace /[\-\_]/, ""
       new_obj[fixed_key] = value
+    new_obj
 
 
   
@@ -157,7 +163,7 @@
           onTrigger: methods['_defaultOnTrigger']                       # Function($marks, $annotation), called whenever the mouse enters the top-level mark (and optionally the matching annotation)
           offTrigger: methods['_defaultOffTrigger']                     # Function($marks, $annotation), called whenever the mouse leaves the top-level mark (and optionally the matching annotation)
           allow_remove: true                                            # Boolean, determines whether the user can remove annotations and the associated marks from the DOM
-          existing_data: {}                                             # [{annotation1}, {annotation2}], Array of annotation data in JSON format. Keys should be "camelCased"
+          existing_data: []                                             # [{annotation1}, {annotation2}], Array of annotation data in JSON format. Keys should be "camelCased"
           include_time: false                                           # Boolean, determines whether Date.toString() will be included as part of the annotation JSON object
           render_from_marks: true                                       # Boolean, determines whether annotations will be rendered on initilization from existing marks in article
         article:
@@ -172,24 +178,28 @@
       $marks = $('mark.annotated', this)
       rendered = []
 
-      $.each settings.annotation.existing_data, (i, data) ->
-        if (($.inArray data.annotateId, rendered) == -1) and (typeof $annotatable_element.data('annotation').render is "function")
-          $annotatable_element.data().annotation.render.apply($annotatable_element, [{annotation: this, status: 'success'}])
-          $("#{settings.annotation.tag_name}[data-annotate-id=#{data.annotateId}]").attr('data-annotatable-id', settings._annotatable_id)
-          rendered.push data.annotateId
+      $.each settings.annotation.existing_data, (i, db_data) ->
+        if $.inArray(db_data.annotateId, rendered) == -1 && typeof($annotatable_element.data('annotation').render) is "function"
+          settings.annotation.beforeRender.apply($annotatable_element, [{annotation: db_data, status: 'success'}]) if typeof settings.annotation.beforeRender is "function"
+          $annotation = settings.annotation.render.apply($annotatable_element, [{annotation: db_data, status: 'success'}])
+          settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
+          $("#{settings.annotation.tag_name}[data-annotate-id=#{db_data.annotateId}]").attr('data-annotatable-id', settings._annotatable_id)
+          rendered.push db_data.annotate_id
       
       if settings.annotation.render_from_marks
         $marks.each ->
           if (($.inArray $(this).data('annotateId'), rendered) == -1) and (typeof $annotatable_element.data('annotation').render is "function")
             settings.annotation.beforeRender.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}]) if typeof settings.annotation.beforeRender is "function"
-            settings.annotation.render.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}])
-            $annotation = $annotatable_element.annotate 'associated', $(this)
+            $annotation = settings.annotation.render.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}])
             settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
             rendered.push $(this).data('annotateId')
 
+      # remove hidden class on mark if there is a matching annotation
+      $('mark.annotated', this).each ->
+        $(this).removeClass('annotate-hidden') if hasAssociated $annotatable_element, $(this)
+
       # bind events for existing annotations and actions conforming to naming conventions
       $(this).data('build_trigger', 'select') if settings.dialog.trigger == 'click' && $('.annotate-build').length == 0
-      $('mark.annotated', this).removeClass('hidden')
       $(this).annotate('_bindEvents')
 
       # display warnings unless explicitly ignored
@@ -212,17 +222,17 @@
     _renderAnnotation: (data) ->
       $annotatable_element = $(this)
       settings = $(this).data()
-      annotate_id = data.annotation.annotate_id || data.annotation.annotateId
 
       if $.inArray(data.status, ['success', '200', 200]) > -1
+        annotation_attr = camelizeObject(data.annotation)
+        annotate_id = annotation_attr['annotateId']
+
         $mark = $("mark[data-annotate-id=#{annotate_id}]:first", this)
 
         if settings.annotation.template?
           annotation_innerHtml = settings.annotation.template
         else
           data_html = ''
-
-          annotation_attr = if $mark[0]? then $mark.data() else data.annotation
 
           if annotation_attr?
             $.each annotation_attr, (key, value) -> data_html += "<dt class='#{key}'>#{titleize(key)}</dt><dd class='annotate-fill-#{key}'></dd>"
@@ -241,7 +251,7 @@
           $attr_field = $(".annotate-fill-#{key}", $annotation[0])
           $attr_field.prepend(value)
         $annotatable_element.annotate 'position', $annotation
-        true
+        $annotation
       else
         $(".annotate-dialog[data-annotatable-id=#{settings._annotatable_id}] .errors").html('There was an error.')
         false
@@ -278,44 +288,45 @@
       if $mark?
         annotate_id = $mark.data('annotate-id')
         $marks = $("mark[data-annotate-id=#{$mark.data('annotate-id')}]")
+        $annotations = $annotatable_element.annotate('associated', $marks)
       else
-        $marks = $('mark.annotated', $annotatable_element[0])
-      
-      $annotations = $annotatable_element.annotate('associated', $marks)
+        $marks = $annotatable_element.find('mark.annotated')
+        $annotations = $(".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]")
 
       # bind marks based on trigger type
       if $marks[0]? && settings.mark.trigger_type?
         switch settings.mark.trigger_type
           when 'hover'
-            $marks.unbind('mouseenter mouseleave').hover((e) ->
-              hover_target = e.currentTarget
-              parents = $(this).parents('mark.annotated')
-              $mark = if parents[parents.length-1]? then $(parents[parents.length-1]) else $(this)
-              context_lengths = []
-              hovered = [$mark[0]]
-              annotate_id = undefined
-              context_lengths.push $mark.data('annotate-context').length
-              $mark.children('mark.annotated').each -> 
-                if $(this).is(':hover')
-                  context_lengths.push $(this).data('annotate-context').length
-                  hovered.push this
+            $marks.each ->
+              if $annotatable_element.annotate('associated', $(this))[0]?
+                $(this).unbind('mouseenter mouseleave').hover((e) ->
+                  hover_target = e.currentTarget
+                  parents = $(this).parents('mark.annotated')
+                  $mark = if parents[parents.length-1]? then $(parents[parents.length-1]) else $(this)
+                  context_lengths = []
+                  hovered = [$mark[0]]
+                  annotate_id = undefined
+                  context_lengths.push $mark.data('annotate-context').length
+                  $mark.children('mark.annotated').each -> 
+                    if $(this).is(':hover')
+                      context_lengths.push $(this).data('annotate-context').length
+                      hovered.push this
 
-              min_length = Math.min.apply Math, context_lengths
+                  min_length = Math.min.apply(Math, context_lengths)
 
-              $(hovered).each ->
-                if $(this).data('annotate-context').length == min_length && typeof settings.mark.onTrigger is "function" && this == hover_target
-                  top_mark_id = $(this).data('annotate-id')
-                  $selected_marks = $annotatable_element.annotate('select', top_mark_id, 'mark')
-                  params = [$selected_marks[0], $annotatable_element.annotate('associated', $selected_marks)[0]]
-                  settings.mark.onTrigger.apply $annotatable_element[0], [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
-                  return false
-
-            , (e) ->
-              annotate_id = $(e.currentTarget).data('annotate-id')
-              $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-              if typeof settings.mark.offTrigger is "function"
-                settings.mark.offTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
-            )
+                  $(hovered).each ->
+                    if $(this).data('annotate-context').length == min_length && typeof settings.mark.onTrigger is "function" && this == hover_target
+                      top_mark_id = $(this).data('annotate-id')
+                      $selected_marks = $annotatable_element.annotate('select', top_mark_id, 'mark')
+                      params = [$selected_marks[0], $annotatable_element.annotate('associated', $selected_marks)[0]]
+                      settings.mark.onTrigger.apply $annotatable_element[0], [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
+                      return false
+                , (e) ->
+                  annotate_id = $(e.currentTarget).data('annotate-id')
+                  $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
+                  if typeof settings.mark.offTrigger is "function"
+                    settings.mark.offTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
+                )
       
       # bind annotations based on trigger type
       if $annotations[0]? && settings.annotation.trigger_type?
@@ -364,32 +375,31 @@
     # remove annotation and associated mark from DOM and call delete_annotations callback
     remove: ($elementOrId) ->
       settings = $(this).data()
-      if settings.annotation.allow_remove
-        if typeof($elementOrId) == 'object'
-          annotate_id = getAnnotateId($elementOrId)
-        else
-          annotate_id = $elementOrId
+      annotate_id = if typeof($elementOrId) == 'object' then getAnnotateId($elementOrId) else $elementOrId
 
-        $marks = $("mark[data-annotate-id=#{annotate_id}]", this)
-        if $marks.length > 0
-          $marks.contents().unwrap()
+      if typeof(settings.annotation.delete) is "function"
+        deleted = settings.annotation.delete.apply(this, [[annotate_id]])
+        if deleted[0]?
+          $.inArray(deleted, annotate_id) > -1
+          $("mark[data-annotate-id=#{annotate_id}]", this).contents().unwrap()
           $(".annotate-annotation[data-annotate-id=#{annotate_id}]").remove()
-          sendArticle($annotatable_element)
-          settings.annotation.delete.apply(this, [annotate_id]) if typeof settings.annotation.delete is "function"
+          sendArticle $(this)
 
     # remove all annotations and associated marks from DOM and call delete_annotations callback
     removeall: ->
       settings = $(this).data()
-      if settings.annotation.allow_remove
+      if typeof settings.annotation.delete is "function"
         annotate_ids = []
         $(this).annotate('cancel')
-        $('mark.annotated', this).each ->
+        $(".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]").each ->
           annotate_id = $(this).data('annotate-id')
           annotate_ids.push annotate_id
-          $(this).contents().unwrap()
-          $(".annotate-annotation[data-annotate-id=#{annotate_id}]").remove()
+
+        deleted = settings.annotation.delete.apply(this, [annotate_ids])
+        $.each deleted, (i, id) ->
+          $("mark[data-annotate-id=#{id}]").contents().unwrap()
+          $(".annotate-annotation[data-annotate-id=#{id}]").remove()
         sendArticle $(this)
-        settings.annotation.delete.apply(this, annotate_ids) if typeof settings.annotation.delete is "function"
 
     # select elements by data-annotate-id attribute
     select: (annotate_id, elementType = '*') -> $("#{elementType}[data-annotate-id=#{annotate_id}]")
@@ -400,7 +410,7 @@
       annotatable_id = $(this).data('_annotatable_id')
       tag_name = $(this).data('annotation').tag_name
       
-      $('mark.annotated', this).removeClass('selected').addClass('hidden').unbind()
+      $('mark.annotated', this).removeClass('selected').addClass('annotate-hidden').unbind()
       $("*[data-annotatable-id=#{annotatable_id}]").unbind('click')
       $("#{tag_name}[data-annotatable-id=#{annotatable_id}]").remove()
       $annotatable_element.annotate('associated', $('mark.annotated', this)).remove()
@@ -504,6 +514,7 @@
           $('.annotate-cancel', dialog).click -> $annotatable_element.annotate('cancel')
           settings.dialog.afterCreate.apply $annotatable_element[0], $(dialog) if typeof settings.dialog.afterCreate is "function"
           $(':input:first', dialog).focus()
+          $(dialog).keyup (e) -> $annotatable_element.annotate('cancel') if e.keyCode is 27
 
           # bind annotation dialog form
           $('.annotate-dialog form').submit (e) ->
@@ -518,13 +529,12 @@
             response = settings.annotation.save(form_data)
 
             html_attr = {}
-            $.each toCamel(response.annotation), (name, value) -> html_attr["data-#{name.replace('_', '-')}"] = value
+            $.each response.annotation, (name, value) -> html_attr["data-#{name.replace('_', '-')}"] = value
             $marks = $('mark.temp', $annotatable_element[0])
             $marks.attr(html_attr)
 
             settings.annotation.beforeRender.apply($annotatable_element, [response]) if typeof settings.annotation.beforeRender is "function"
-            if settings.annotation.render.apply($annotatable_element, [response]) && typeof settings.annotation.render is "function"
-              $annotation = $annotatable_element.annotate 'associated', $marks
+            if typeof(settings.annotation.render) is "function" && ($annotation = settings.annotation.render.apply $annotatable_element, [response]) instanceof jQuery
               settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
               $marks.addClass('annotated').removeClass('temp')
 
