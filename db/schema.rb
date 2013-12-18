@@ -19,8 +19,10 @@ ActiveRecord::Schema.define(version: 20131211165738) do
   create_table "annotations", force: true do |t|
     t.string   "annotate_id"
     t.text     "annotate_context"
+    t.integer  "annotate_editable"
     t.text     "content"
     t.integer  "user_id"
+    t.integer  "poem_id"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
@@ -36,6 +38,9 @@ ActiveRecord::Schema.define(version: 20131211165738) do
     t.string   "provider"
     t.string   "uid"
     t.string   "name"
+    t.string   "oauth_token"
+    t.datetime "oauth_expires_at"
+    t.string   "image"
     t.datetime "created_at"
     t.datetime "updated_at"
   end

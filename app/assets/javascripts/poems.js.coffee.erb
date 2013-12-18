@@ -15,11 +15,10 @@ updatePoem = (article_html) ->
 	  dataType: 'json'
   response
 
-afterAnnotationRender = ($annotation) ->
-	$annotatable_element = $(this)
-	$annotation.unbind('click').click -> 
-		$annotatable_element.annotate('remove', $annotation)
-	$("span", $annotation).unbind('click').click (event) -> event.stopPropagation()
+beforeDialogCreate = ->
+	if $('.top-bar-section li a:contains("Sign in with Facebook")').length > 0
+		alert "You need to sign in before you can annotate this poem!"
+		false
 
 getAnnotations = ->	
 	response = []
@@ -39,8 +38,13 @@ deleteAnnotations = (annotate_ids) ->
       url: window.location.pathname + "/annotations/" + annotate_id
       dataType: "json"
       success: ->
-        successful.push annotate_ids
+        successful.push annotate_id
   successful
+
+afterAnnotationRender = ($annotation) ->
+	$img = $annotation.find('.annotate-fill-userImage')
+	img_url = $img.text()
+	$img.replaceWith("<img src='#{img_url}' class='left'>")
 
 saveAnnotation = (data) ->
 	response = {}
@@ -57,20 +61,22 @@ saveAnnotation = (data) ->
 
 
 $ ->
-	$('#poem.annotatable').annotate
-		annotation:
-			container: $('ul#annotations')[0]
-			position: null
-			template: '<span class="annotate-fill-content"></span>'
-			tag_name: 'li'
-			afterRender: afterAnnotationRender
-			render_from_marks: false
-			existing_data: getAnnotations()
-			save: saveAnnotation
-			delete: deleteAnnotations
-		article:
-			update: updatePoem
-		dialog:
-			template: '<form><div class="row"><div class="errors"></div><label for="content">Content</label></div><div class="row"><input name="content"></input></div><div class="row"><button type="submit" class="tiny">Add Annotation</button><button type="button" class="annotate-cancel button secondary tiny">Cancel</button></div></form>'
-			class: 'panel radius'
-			offset_amount: 40
+	if $('#poem.annotatable').length > 0
+		$('#poem.annotatable').annotate
+			annotation:
+				container: $('ul#annotations')[0]
+				position: null
+				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert tiny right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content'></p><div style='clear: both;'></div></div>"
+				tag_name: 'li'
+				render_from_marks: false
+				existing_data: getAnnotations()
+				afterRender: afterAnnotationRender
+				save: saveAnnotation
+				delete: deleteAnnotations
+			article:
+				update: updatePoem
+			dialog:
+				template: '<form><div class="row"><div class="errors"></div><label for="content">Content</label></div><div class="row"><input name="content"></input></div><div class="row"><button type="submit" class="tiny">Add Annotation</button><button type="button" class="annotate-cancel button secondary tiny">Cancel</button></div></form>'
+				class: 'panel radius'
+				offset_amount: 40
+				beforeCreate: beforeDialogCreate

@@ -28,12 +28,23 @@
 		      <h1><%= link_to "Poem Annotator", poems_path %></a></h1>
 		    </li>
 		  </ul>
+      <% if current_user %>
+        <p class="top-bar-content left">Signed in as <span class="bold"><%= current_user.name %></span></p>
+      <% end %>
 		  <section class="top-bar-section">
 		    <ul class="right">
 		      <li class="divider"></li>
 		      <li><%= link_to "Browse Poems", poems_path %></li>
 		      <li class="divider"></li>
 		      <li><%= link_to "Contact Us" %></li>
+          <li class="divider"></li>
+          <li>
+            <% if current_user %>
+              <%= link_to 'Sign Out', '/signout' %>
+            <% else %>
+              <%= link_to "Sign in with Facebook", "/auth/facebook" %>
+            <% end %>
+          </li>
 		    </ul>
 		  </section>
 		</nav>

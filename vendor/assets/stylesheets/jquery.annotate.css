@@ -1,6 +1,6 @@
 mark.annotated {background: rgba(239, 204, 0, 0.30);}
-mark.annotated.selected,
-mark.annotated.selected .annotated {background: yellow;}
+mark.annotated.annotate-selected,
+mark.annotated.annotate-selected .annotated {background: yellow;}
 mark.temp {background: #92A1CF;}
 mark.annotate-hidden { background: none; }
 
@@ -8,9 +8,16 @@ mark.annotate-hidden { background: none; }
 	position: static;
 	font-size: 12px;
 	z-index: 100;
+	border: 1px gray solid;
+	background: #212D48;
+	color: #fff;
+	padding: 0px;
 }
 
-.annotate-annotation.selected {background: yellow; z-index: 105;}
+.annotate-annotation img { margin-right: 3px; }
+.annotation-inner {padding-top: 5px; }
+
+.annotate-annotation.annotate-selected {position: relative; right: 20px;}
 .annotate-annotation.hidden { display: none; }
 
 dt.annotate_id, dd.annotate-fill-annotate_id { display: none; }

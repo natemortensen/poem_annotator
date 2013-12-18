@@ -13,3 +13,6 @@
  *= require jquery.annotate
  *= require_tree .
  */
+
+ p.top-bar-content { color: #fff;}
+ .bold { font-weight: bold; }

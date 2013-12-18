@@ -1,10 +1,13 @@
 class AnnotationsController < ApplicationController
-  before_action :set_annotation, only: [:show, :edit, :update, :destroy]
+  before_action :set_annotation
 
   # GET /annotations
   # GET /annotations.json
   def index
-    @annotations = Annotation.all
+    @annotations = @poem.annotations
+    respond_to do |format|
+      format.json { render action: 'index', locals: {current_user: current_user} }
+    end
   end
 
   # GET /annotations/1
@@ -15,11 +18,11 @@ class AnnotationsController < ApplicationController
   # POST /annotations
   # POST /annotations.json
   def create
-    @annotation = Annotation.new(annotation_params)
+    @annotation = @poem.annotations.build annotation_params.merge(user: current_user)
 
     respond_to do |format|
       if @annotation.save
-        format.json { render action: 'show', status: :created }
+        format.json { render action: 'show', status: :created, locals: {current_user: current_user} }
       else
         format.json { render json: @annotation.errors, status: :unprocessable_entity }
       end
@@ -41,7 +44,7 @@ class AnnotationsController < ApplicationController
   # DELETE /annotations/1
   # DELETE /annotations/1.json
   def destroy
-    @annotation.destroy
+    current_user.annotations.find_by_annotate_id(params[:id]).destroy
     respond_to do |format|
       format.json { head :no_content }
     end
@@ -51,6 +54,7 @@ class AnnotationsController < ApplicationController
     # Use callbacks to share common setup or constraints between actions.
     def set_annotation
       @annotation = Annotation.find_by_annotate_id(params[:id])
+      @poem = Poem.find_by_id(params[:poem_id])
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.
