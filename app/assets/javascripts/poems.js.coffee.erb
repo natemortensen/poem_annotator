@@ -1,6 +1,13 @@
 # Place all the behaviors and hooks related to the matching controller here.
 # All this logic will automatically be available in application.js.
-# You can use CoffeeScript in this file: http://coffeescript.org/
+# You can use CoffeeScript in this file: http://coffeescript.org.
+
+afterDialogCreate = ($dialog) ->	
+	$dialog.on 'blur keyup paste input', '[contenteditable]', ->
+	  $this = $(this)
+	  input_name = $this.data('input-name')
+	  $input = $dialog.find("input[name=#{input_name}]")
+	  $input.val $this.text()
 
 updatePoem = (article_html) ->
 	response = false
@@ -16,9 +23,13 @@ updatePoem = (article_html) ->
   response
 
 beforeDialogCreate = ->
-	if $('.top-bar-section li a:contains("Sign in with Facebook")').length > 0
+	if $('.top-bar-section li a:contains("Sign Out")').length == 0
 		alert "You need to sign in before you can annotate this poem!"
 		false
+
+afterCancel = ->
+	$('#poem, #poem_title').css
+		position: 'static'
 
 getAnnotations = ->	
 	response = []
@@ -61,22 +72,33 @@ saveAnnotation = (data) ->
 
 
 $ ->
+	$('.save-article').click ->
+		updatePoem $('#poem').html()
+
+	$('#show_orphaned').change ->
+		$('#orphaned').toggle()
+
 	if $('#poem.annotatable').length > 0
 		$('#poem.annotatable').annotate
 			annotation:
 				container: $('ul#annotations')[0]
-				position: null
-				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert tiny right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content'></p><div style='clear: both;'></div></div>"
+				position: 'left'
+				offset_amount: 25
+				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert small right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content'></p><div style='clear: both;'></div></div>"
 				tag_name: 'li'
-				render_from_marks: false
 				existing_data: getAnnotations()
 				afterRender: afterAnnotationRender
+				render_from_marks: false
 				save: saveAnnotation
 				delete: deleteAnnotations
 			article:
 				update: updatePoem
 			dialog:
-				template: '<form><div class="row"><div class="errors"></div><label for="content">Content</label></div><div class="row"><input name="content"></input></div><div class="row"><button type="submit" class="tiny">Add Annotation</button><button type="button" class="annotate-cancel button secondary tiny">Cancel</button></div></form>'
-				class: 'panel radius'
-				offset_amount: 40
+				template: '<form><div class="row"><div class="errors"></div><input name="content" type="hidden"></input><p class="bold">Annotation</p><p class="dialog-content" contenteditable="true" data-ph="Annotation content" data-input-name="content"></p></div><div class="row"><button type="submit" class="small">Add Annotation</button> <button type="button" class="annotate-cancel button secondary small">Cancel</button></div></form>'
+				offset_amount: 25
+				trigger_type: 'select'
+				position: 'left'
+				build_on_select: false
 				beforeCreate: beforeDialogCreate
+				afterCreate: afterDialogCreate
+				afterCancel: afterCancel

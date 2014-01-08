@@ -1,19 +1,32 @@
 <div class="row">
+	<div class="large-8 large-centered columns">
+		<ul class="button-group radius">
+		  <li><%= link_to 'Back', poems_path, class: 'button secondary' %></li>
+		  <li><%= button_tag 'Mark Text', class: 'annotate-build button' %></li>
+		  <li><%= button_tag 'Save Article', class: 'save-article button success' %></li>
+		  <li><%= button_tag 'Clear Annotations', class: 'annotate-removeall button alert' %></li>
+		</ul>
+	</div>
+</div>
+
+<div class="row">
+
 	<div class="large-8 columns">
 		<p id="notice"><%= notice %></p>
 
-		<h4><%= @poem.title %></h4>
+		<h4 id="poem_title"><%= @poem.title %></h4>
 
-		<div id="poem" class="annotatable">
+		<div id="poem" class="annotatable" contenteditable="true">
 		  <%= @poem.content.html_safe %>
 		</div>
-
-		
 	</div>
 
-	<div class="large-4 columns">
-		<%= link_to 'Back', poems_path, class: 'button secondary small' %> <%= button_tag 'Remove All Annotations', class: 'annotate-removeall button alert small' %>
-		<h2>Annotations</h2>
-    <ul id="annotations"></ul>
+	<div class="large-2 columns">
+		<%= label_tag 'show_orphaned', 'Show Orphaned? ', class: 'right' %>
+		<%= check_box_tag "show_orphaned", '1', true %>
+		<div id="orphaned">
+			<h3>Annotations</h3>
+		  <ul id="annotations"></ul>
+		</div>
 	</div>
 </div>

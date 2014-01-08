@@ -120,10 +120,16 @@
     settings = $annotatable_element.data()
 
     if typeof settings.article.update is "function"
-      $annotatable_element.find('mark').addClass('annotate-hidden')
+      
+      $annotatable_element.annotate('cancel')
       settings.article.update.apply($annotatable_element[0], [$annotatable_element.html()])
       $annotatable_element.find('mark').each ->
         $(this).removeClass('annotate-hidden') if hasAssociated $annotatable_element, $(this)
+
+  selectedAnnotations = ($annotatable_element) ->
+    $selected_marks = $annotatable_element.find('mark.annotate-selected').not('.annotate-hidden')
+    $selected_annotations = $annotatable_element.annotate 'associated', $selected_marks
+    [$selected_marks, $selected_annotations]
 
   camelizeObject = (obj = {}) ->
     new_obj = {}
@@ -132,6 +138,9 @@
         $1.toUpperCase().replace /[\-\_]/, ""
       new_obj[fixed_key] = value
     new_obj
+
+  flattenObject = (array) ->
+    $(array[0]).add(array[1])
 
 
   
@@ -154,17 +163,17 @@
         ignore_warnings: false                                          # Boolean, determines whether warnings will be displayed in the console log        
         _annotatable_id: generateAnnotateId()
         dialog:
-          class: ''
-          tag_name: 'div'
+          class: ''                                                     # String, additional classes for the dialog element, separated by spaces
+          tag_name: 'div'                                               # String, valid tagName for dialog element
           offset_amount: 10                                             # Integer, amount of pixels between text and popup, or pixels between document width
           position: 'top'                                               # 'top' | 'bottom' | 'left' | 'right', float popup left/right, or hover above/below selected text
-          trigger_type: 'select'                                        # 'select' | 'click' | null, which type of event triggers the build_annotation callback
+          build_on_select: true                                         # 'select' | 'click' | null, which type of event triggers the build_annotation callback
           template: default_dialog                                      # String, HTML template for annotation dialog, should contain a form
           beforeCreate: -> true                                         # Function(), called before dialog is rendered
           create: methods['_createDialog']                              # Function(), renders dialog into DOM, overrides default functionality. Element should be created with a form inside and should contain a data-annotatable-id retrievable from the annotatable element: 
           afterCreate: null                                             # Function($dialog), called after dialog is rendered
-          beforeCancel: null
-          afterCancel: null
+          beforeCancel: null                                            # Function($dialog), called before .annotate(‘cancel’)
+          afterCancel: null                                             # Function(), called after .annotate(‘cancel’)
         annotation:
           class: ''
           offset_amount: 10                                             # Integer, amount of pixels between text and popup, or pixels between document width
@@ -180,10 +189,8 @@
           trigger_type: 'click'                                         # 'select' | 'click' | null, specifies which type of event triggers the onTrigger and offTrigger callbacks
           onTrigger: methods['_defaultOnTrigger']                       # Function($marks, $annotation), called whenever the mouse enters the top-level mark (and optionally the matching annotation)
           offTrigger: methods['_defaultOffTrigger']                     # Function($marks, $annotation), called whenever the mouse leaves the top-level mark (and optionally the matching annotation)
-          allow_remove: true                                            # Boolean, determines whether the user can remove annotations and the associated marks from the DOM
           existing_data: []                                             # [{annotation1}, {annotation2}], Array of annotation data in JSON format. Keys should be "camelCased"
           include_time: false                                           # Boolean, determines whether Date.toString() will be included as part of the annotation JSON object
-          render_from_marks: true                                       # Boolean, determines whether annotations will be rendered on initilization from existing marks in article
         article:
           update: null                                                  # Function(article_html), called whenever a permanent mark is added or removed to the article
         mark:
@@ -201,24 +208,30 @@
           valid = settings.annotation.beforeRender.apply($annotatable_element, [{annotation: db_data, status: 'success'}]) if typeof settings.annotation.beforeRender is "function"
           $annotation = settings.annotation.render.apply($annotatable_element, [{annotation: db_data, status: 'success'}]) if valid == true
           settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
+          $annotation.find('.annotate-remove').click -> $annotatable_element.annotate('remove', $(this))
           $("#{settings.annotation.tag_name}[data-annotate-id=#{db_data.annotateId}]").attr('data-annotatable-id', settings._annotatable_id)
           rendered.push db_data.annotate_id
-      
-      if settings.annotation.render_from_marks
-        $marks.each ->
-          if (($.inArray $(this).data('annotateId'), rendered) == -1) and (typeof $annotatable_element.data('annotation').render is "function")
-            valid = settings.annotation.beforeRender.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}]) if typeof settings.annotation.beforeRender is "function"
-            $annotation = settings.annotation.render.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}]) if valid == true
-            settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
-            rendered.push $(this).data('annotateId')
+
+      $marks.each ->
+        if (($.inArray $(this).data('annotateId'), rendered) == -1) and (typeof $annotatable_element.data('annotation').render is "function")
+          valid = settings.annotation.beforeRender.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}]) if typeof settings.annotation.beforeRender is "function"
+          $annotation = settings.annotation.render.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}]) if valid == true
+          settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
+          $annotation.find('.annotate-remove').click -> $annotatable_element.annotate('remove', $(this))
+          rendered.push $(this).data('annotateId')
 
       # remove hidden class on mark if there is a matching annotation
+      $annotatable_element.find('mark').addClass('annotate-hidden').removeClass('annotate-selected')
       $('mark.annotated', this).each ->
         $(this).removeClass('annotate-hidden') if hasAssociated $annotatable_element, $(this)
 
-      # bind events for existing annotations and actions conforming to naming conventions
-      $(this).data('build_trigger', 'select') if settings.dialog.trigger_type == 'click' && $('.annotate-build').length == 0
+      # bind events for existing annotations
       $(this).annotate('_bindEvents')
+
+      # bind buttons that conform to naming conventions
+      $('.annotate-removeall').click -> $annotatable_element.annotate('removeall')
+      $('.annotate-destroy').click -> $annotatable_element.annotate('destroy')
+      $('.annotate-build').click -> $annotatable_element.annotate('build')
 
       # display warnings unless explicitly ignored
       unless settings.ignore_warnings
@@ -265,7 +278,7 @@
         else
           $(settings.annotation.container).append annotation_html
 
-        $annotation = $(".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]:last")
+        $annotation = $(".annotate-annotation[data-annotate-id=#{annotate_id}]")
 
         $.each annotation_attr || $mark.data(), (key, value) ->
           $attr_field = $(".annotate-fill-#{key}", $annotation[0])
@@ -280,19 +293,15 @@
     # default mouseenter callback for marks
     _defaultOnTrigger: ($marks, $annotation) ->
       settings = $(this).data()
-      $marks.add($annotation).addClass('annotate-selected')
       if $.inArray(settings.annotation.position, ['top', 'bottom']) > -1
         $annotation.show()
-      if settings.mark.trigger_type == 'hover'
-        $marks.add($annotation).mouseenter ->
-          clearTimeout(settings._timer.id) if settings._timer? && settings._timer.annotation == $annotation.data('annotate-id')
+        if settings.mark.trigger_type == 'hover'
+          $marks.add($annotation).mouseenter ->
+            clearTimeout(settings._timer.id) if settings._timer? && settings._timer.annotation == $annotation.data('annotate-id')
 
     # default mouseleave callback for marks
     _defaultOffTrigger: ($marks, $annotation) ->
       settings = $(this).data()
-
-      $marks.add($annotation).removeClass('annotate-selected')
-
       if $.inArray(settings.annotation.position, ['top', 'bottom']) > -1
         if settings.mark.trigger_type == 'hover'
           settings._timer =
@@ -308,16 +317,13 @@
       $annotatable_element = $(this)
       settings = $annotatable_element.data()
 
-      $all_marks = $annotatable_element.find('mark.annotated').not('.annotate-hidden')
-      $all_annotations = $(".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]")
-
       if $mark?
         annotate_id = $mark.data('annotate-id')
         $marks = $("mark[data-annotate-id=#{$mark.data('annotate-id')}]")
         $annotations = $annotatable_element.annotate('associated', $marks)
       else
-        $marks = $all_marks
-        $annotations = $all_annotations
+        $marks = $annotatable_element.find('mark.annotated').not('.annotate-hidden')
+        $annotations = $(".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]")
 
       # bind marks based on trigger type
       if $marks[0]? && settings.mark.trigger_type?
@@ -329,13 +335,16 @@
                   annotate_id = getTopMarkId(e.currentTarget)
                   $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark')
                   if typeof settings.mark.onTrigger is "function" && $(e.currentTarget).data('annotate-id') == annotate_id
-                    window.params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
+                    params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
+                    flattenObject(params).addClass('annotate-selected')
                     settings.mark.onTrigger.apply($annotatable_element[0], params)
                 , (e) ->
                   annotate_id = $(e.currentTarget).data('annotate-id')
                   $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
                   if typeof settings.mark.offTrigger is "function"
-                    settings.mark.offTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
+                    params = [$marks, $annotatable_element.annotate('associated', $marks)]
+                    flattenObject(params).removeClass('annotate-selected')
+                    settings.mark.offTrigger.apply $annotatable_element[0], params
                 )
           when 'click'
             $marks.each ->
@@ -346,6 +355,7 @@
                   if typeof settings.mark.onTrigger is "function" && $(e.currentTarget).data('annotate-id') == annotate_id
                     e.stopPropagation()
                     params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
+                    flattenObject(params).addClass('annotate-selected')
                     settings.mark.onTrigger.apply($annotatable_element[0], params)
       
       # bind annotations based on trigger type
@@ -357,39 +367,40 @@
               $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
 
               if typeof settings.annotation.onTrigger is "function"
-                settings.annotation.onTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
+                params = [$marks, $annotatable_element.annotate('associated', $marks)]
+                flattenObject(params).addClass('annotate-selected')
+                settings.annotation.onTrigger.apply $annotatable_element[0], params
             , (e) ->
               annotate_id = $(e.currentTarget).data('annotate-id')
               $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
 
               if typeof settings.annotation.offTrigger is "function"
-                settings.annotation.offTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
+                params = [$marks, $annotatable_element.annotate('associated', $marks)]
+                flattenObject(params).removeClass('annotate-selected')
+                settings.annotation.offTrigger.apply $annotatable_element[0], params
             )
           when 'click'
             $annotations.unbind('click').click (e) ->
               annotate_id = $(e.currentTarget).data('annotate-id')
               $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
               if typeof settings.annotation.offTrigger is "function"
-                settings.annotation.offTrigger.apply $annotatable_element[0], [$all_marks, $all_annotations]
+                selected = selectedAnnotations($annotatable_element)
+                flattenObject(selected).removeClass('annotate-selected')
+                settings.annotation.offTrigger.apply $annotatable_element[0], selected
               if typeof settings.annotation.onTrigger is "function"
+                params = [$marks, $annotatable_element.annotate('associated', $marks)]
+                flattenObject(params).addClass('annotate-selected')
                 settings.annotation.onTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
-
-      # bind buttons to actions
-      $('.annotate-remove').each -> $(this).unbind('click').click -> $annotatable_element.annotate('remove', $(this))
-      $('.annotate-removeall').unbind('click').click -> $annotatable_element.annotate('removeall')
-      $('.annotate-destroy').unbind('click').click -> $annotatable_element.annotate('destroy')
-      $('.annotate-build').unbind('click').click -> $annotatable_element.annotate('build') if $.inArray settings.dialog.trigger_type, ['click', 'both'] > -1
       
       # bind .annotate('build') to text-select event, if applicable
-      if $.inArray settings.dialog.trigger_type, ['hover', 'both'] > -1
-        $annotatable_element.unbind('mouseup').mouseup (e) ->
-          if settings.mark.trigger_type == 'click' || settings.annotation.trigger_type == 'click'
-            $selected_marks = $('mark.annotate-selected')
-            $selected_annotations = $annotatable_element.annotate 'associated', $selected_marks
-            $selected_marks.add($selected_annotations).removeClass('annotate-selected')
+      $annotatable_element.unbind('mouseup').mouseup (e) ->
+        if settings.mark.trigger_type == 'click' || settings.annotation.trigger_type == 'click'
+          selected = selectedAnnotations($annotatable_element)
+          $(selected[0]).add(selected[1]).removeClass('annotate-selected')
+          settings.mark.offTrigger.apply $annotatable_element[0], selected
 
-          unless $(e.target).hasClass('annotate-dialog') || $(e.target).parents('.annotate-dialog').length > 0
-            $annotatable_element.annotate('build')
+        if settings.dialog.build_on_select
+          $annotatable_element.annotate('build') unless $(this).hasClass('annotate-dialog') || $(this).parents('.annotate-dialog').length > 0
 
 
 
@@ -397,6 +408,7 @@
     cancel: ->
       $annotatable_element = $(this)
       settings = $annotatable_element.data()
+      dialog = $(".annotate-dialog[data-annotatable-id=#{settings._annotatable_id}]")[0]
 
       settings.dialog.beforeCancel.apply $annotatable_element[0], $(dialog) if typeof settings.dialog.beforeCancel is "function"
 
@@ -404,7 +416,7 @@
       $(".annotate-dialog[data-annotatable-id=#{annotatable_id}]").remove()
       $('mark.temp', this).contents().unwrap()
 
-      settings.dialog.afterCancel.apply $annotatable_element[0], $(dialog) if typeof settings.dialog.afterCancel is "function"
+      settings.dialog.afterCancel.apply($annotatable_element[0]) if typeof settings.dialog.afterCancel is "function"
 
     # remove annotation and associated mark from DOM and call delete_annotations callback
     remove: ($elementOrId) ->
@@ -444,7 +456,7 @@
       annotatable_id = $(this).data('_annotatable_id')
       tag_name = $(this).data('annotation').tag_name
       
-      $('mark.annotated', this).removeClass('annotate-selected').addClass('annotate-hidden').unbind()
+      $('mark.annotated', this).unbind()
       $("*[data-annotatable-id=#{annotatable_id}]").unbind('click')
       $("#{tag_name}[data-annotatable-id=#{annotatable_id}]").remove()
       $annotatable_element.annotate('associated', $('mark.annotated', this)).remove()
@@ -481,7 +493,7 @@
         annotate_id: $el.data('annotate-id')
       , params)
 
-      display_type = if $el.hasClass('annotate-annotation') && $.inArray(options.direction, ['top', 'bottom']) > -1 then 'none' else 'block'
+      $el.css {display: 'none'} if $el.hasClass('annotate-annotation') && $.inArray(options.direction, ['top', 'bottom']) > -1
       popup_placement = if options.direction == 'bottom' then 'last' else 'first'
 
       scope = "mark[data-annotate-id=#{options.annotate_id}]:#{popup_placement}"
@@ -489,31 +501,29 @@
         
       if mark?
         mark_left = inlineOffset(mark).left
-        mark_top = inlineOffset(mark).top
+        mark_top = $(mark).offset().top
 
         switch options.direction
           when 'left'
             $el.css
-              left: options.offset_amount 
+              left: options.offset_amount
               top: mark_top
-              display: display_type
           when 'right'
             $el.css
               right: options.offset_amount
               top: mark_top
-              display: display_type
           when 'top'
             $el.css
               left: $(mark).width()/2 + mark_left
               top: mark_top - options.offset_amount - $el.height()
-              display: display_type
           when 'bottom'
             $el.css
               left: $(mark).width()/2 + mark_left
               top: $(mark).height() + mark_top + options.offset_amount
-              display: display_type
       else
-        $el.css { position: 'static' }
+        $el.css
+          position: 'static'
+          display: 'block'
 
     # render annotation dialog, bind form, render annotation and update article if successful
     build: ->
@@ -544,11 +554,11 @@
         if typeof settings.dialog.beforeCreate is "function" && before_result != false
           settings.dialog.create.apply($annotatable_element[0]) if typeof settings.dialog.create is "function"
 
-          dialog = $(".annotate-dialog[data-annotatable-id=#{settings._annotatable_id}]")[0]
-          $('.annotate-cancel', dialog).click -> $annotatable_element.annotate('cancel')
-          settings.dialog.afterCreate.apply $annotatable_element[0], $(dialog) if typeof settings.dialog.afterCreate is "function"
-          $(':input:first', dialog).focus()
-          $(dialog).keyup (e) -> $annotatable_element.annotate('cancel') if e.keyCode is 27
+          $dialog = $(".annotate-dialog[data-annotatable-id=#{settings._annotatable_id}]")
+          $dialog.find('.annotate-cancel').click -> $annotatable_element.annotate('cancel')
+          settings.dialog.afterCreate.apply $annotatable_element[0], [$dialog] if typeof settings.dialog.afterCreate is "function"
+          $dialog.find(':input:first').focus()
+          $dialog.keyup (e) -> $annotatable_element.annotate('cancel') if e.keyCode is 27
 
           # bind annotation dialog form
           $('.annotate-dialog form').submit (e) ->
@@ -572,6 +582,7 @@
             if valid == true && typeof(settings.annotation.render) is "function" && ($annotation = settings.annotation.render.apply $annotatable_element, [response]) instanceof jQuery
               settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
               $marks.addClass('annotated').removeClass('temp')
+              $annotation.find('.annotate-remove').click -> $annotatable_element.annotate('remove', $(this))
 
               $annotatable_element.annotate('cancel')
               sendArticle($annotatable_element)
