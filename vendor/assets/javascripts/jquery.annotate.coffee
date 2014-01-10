@@ -74,8 +74,8 @@
     randomstring
 
   # get the annotation id from an element, or its parent(s)
-  getAnnotateId = ($element) ->
-    $element.data('annotate-id') || $element.parent('*[data-annotate-id!=undefined]').data('annotate-id')
+  getAnnotateId = ($element, parentTag = '') ->
+    $element.data('annotate-id') || $($element.parents(parentTag)[0]).data('annotate-id')
 
   getTopMarkId = (target) ->
     target = target
@@ -139,6 +139,14 @@
       new_obj[fixed_key] = value
     new_obj
 
+  decamelizeObject = (obj = {}) ->
+    new_obj = {}
+    $.each obj, (key, value) ->
+      fixed_key = key.replace /([A-Z])/g, ($1) ->
+        '_' + $1.toLowerCase()
+      new_obj[fixed_key] = value
+    new_obj
+
   flattenObject = (array) ->
     $(array[0]).add(array[1])
 
@@ -146,26 +154,21 @@
     html_attr = {}
     $.each attributes, (name, value) -> 
       html_attr["data-#{name}"] = value unless name == 'annotateEditable'
-    console.log html_attr
     $marks.attr(html_attr).addClass('annotated').removeClass('temp annotate-selected')
 
   renderSteps = ($annotatable_element, data, action) ->
     settings = $annotatable_element.data()
 
-    valid = settings.annotation.beforeRender.apply($annotatable_element, [data]) if typeof settings.annotation.beforeRender is "function"
-    if valid? && valid && typeof(settings.annotation.render) is "function" && ($annotation = settings.annotation.render.apply $annotatable_element, [data]) instanceof jQuery
+    valid_annotation = settings.annotation.beforeRender.apply($annotatable_element, [data]) if typeof settings.annotation.beforeRender is "function"
+    if valid_annotation? && valid_annotation && typeof(settings.annotation.render) is "function" && ($annotation = settings.annotation.render.apply $annotatable_element, [data]) instanceof jQuery
       settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
 
-      $annotation.data(data.annotation)
+      annotation_attr = camelizeObject(data.annotation)
+      $annotation.data(annotation_attr)
       $marks = if action == 'new' then $annotatable_element.find('mark.temp') else $annotatable_element.annotate('associated', $annotation)
-      console.log $marks
-      setMarkAttributes camelizeObject(data.annotation), $marks
+      setMarkAttributes(annotation_attr, $marks)
 
-      $annotation.attr('data-annotatable-id', settings._annotatable_id).find('.annotate-remove').click ->
-        $annotatable_element.annotate('remove', $(this))
-      $annotation.find('.annotate-revert').click ->
-        $annotatable_element.annotate('revert', $annotation)
-      bindAnnotationUpdate($annotation, $annotatable_element)
+      $annotation.attr('data-annotatable-id', settings._annotatable_id)
       $annotatable_element.annotate('_bindEvents', $marks)
       $annotatable_element.annotate('cancel')
       sendArticle($annotatable_element)
@@ -237,20 +240,13 @@
       rendered = []
 
       $.each settings.annotation.existing_data, (i, db_data) ->
-        if $.inArray(db_data.annotateId, rendered) == -1 && typeof($annotatable_element.data('annotation').render) is "function"
-          valid = settings.annotation.beforeRender.apply($annotatable_element, [{annotation: db_data, status: 'success'}]) if typeof settings.annotation.beforeRender is "function"
-          $annotation = settings.annotation.render.apply($annotatable_element, [{annotation: db_data, status: 'success'}]) if valid == true
-          settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
-          $annotation.find('.annotate-remove').click -> $annotatable_element.annotate('remove', $(this))
-          $("#{settings.annotation.tag_name}[data-annotate-id=#{db_data.annotateId}]").attr('data-annotatable-id', settings._annotatable_id)
+        if $.inArray(db_data.annotate_id, rendered) == -1
+          renderSteps($annotatable_element, {annotation: db_data, status: 'success'}, 'init')
           rendered.push db_data.annotate_id
 
       $marks.each ->
-        if (($.inArray $(this).data('annotateId'), rendered) == -1) and (typeof $annotatable_element.data('annotation').render is "function")
-          valid = settings.annotation.beforeRender.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}]) if typeof settings.annotation.beforeRender is "function"
-          $annotation = settings.annotation.render.apply($annotatable_element, [{annotation: $(this).data(), status: 'success'}]) if valid == true
-          settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
-          $annotation.find('.annotate-remove').click -> $annotatable_element.annotate('remove', $(this))
+        if $.inArray($(this).data('annotateId'), rendered) == -1
+          renderSteps($annotatable_element, {annotation: $(this).data(), status: 'success'}, 'init')
           rendered.push $(this).data('annotateId')
 
       # remove hidden class on mark if there is a matching annotation
@@ -425,19 +421,20 @@
                 flattenObject(params).addClass('annotate-selected')
                 settings.annotation.onTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
       
+      # bind annotation buttons according to naming conventions
+      $annotations.find('.annotate-remove').unbind('click').click -> $annotatable_element.annotate('remove', $(this))
+      $annotations.find('.annotate-revert').unbind('click').click -> $annotatable_element.annotate('revert', $(this))
+
       # bind annotation form submit to update action
-      $annotations.find('form').submit (e) ->
+      $annotations.find('form').unbind('submit').submit (e) ->
         settings = $annotatable_element.data()
         e.preventDefault()
 
         form_data = serializeObject(this, {annotate_id: $annotations.data('annotate-id')})
         response = settings.annotation.update(form_data)
 
-        $annotations.remove()
         $marks = $annotatable_element.annotate('associated', $annotations)
-        unless response == false
-          renderSteps($annotatable_element, response, 'update')
-          sendArticle($annotatable_element)
+        $annotations.remove() if renderSteps($annotatable_element, response, 'update')
 
       # bind .annotate('build') to text-select event, if applicable
       $annotatable_element.unbind('mouseup').mouseup (e) ->
@@ -468,7 +465,7 @@
     # remove annotation and associated mark from DOM and call delete_annotations callback
     remove: ($elementOrId) ->
       settings = $(this).data()
-      annotate_id = if typeof($elementOrId) == 'object' then getAnnotateId($elementOrId) else $elementOrId
+      annotate_id = if typeof($elementOrId) == 'object' then getAnnotateId($elementOrId, settings.annotation.tag_name) else $elementOrId
 
       if typeof(settings.annotation.delete) is "function"
         deleted = settings.annotation.delete.apply(this, [[annotate_id]])
@@ -508,6 +505,21 @@
       $("#{tag_name}[data-annotatable-id=#{annotatable_id}]").remove()
       $annotatable_element.annotate('associated', $('mark.annotated', this)).remove()
       $annotatable_element.unbind('mouseup').removeData()
+
+    # re-render an annotation to undo an update
+    revert: ($elementOrId) ->
+      $annotatable_element = $(this)
+      settings = $annotatable_element.data()
+      window.annotate_id = if typeof($elementOrId) == 'object' then getAnnotateId($elementOrId, settings.annotation.tag_name) else $elementOrId
+
+      $annotation = $annotatable_element.annotate('select', annotate_id, settings.annotation.tag_name)
+      response =
+        annotation: $annotation.data()
+        status: 'success'
+
+      $annotation.remove()
+      renderSteps($annotatable_element, response, 'revert')
+
 
     # select other elements by the same data-annotate-id attribute, with different tagNames
     associated: ($elements) ->
@@ -625,15 +637,8 @@
             $marks = $('mark.temp', $annotatable_element[0])
             $marks.attr(html_attr)
 
-            valid = settings.annotation.beforeRender.apply($annotatable_element, [response]) if typeof settings.annotation.beforeRender is "function"
-            if valid == true && typeof(settings.annotation.render) is "function" && ($annotation = settings.annotation.render.apply $annotatable_element, [response]) instanceof jQuery
-              settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
-              $marks.addClass('annotated').removeClass('temp')
-              $annotation.find('.annotate-remove').click -> $annotatable_element.annotate('remove', $(this))
+            renderSteps($annotatable_element, response, 'new')
 
-              $annotatable_element.annotate('cancel')
-              sendArticle($annotatable_element)
-              $annotatable_element.annotate('_bindEvents', $marks)
         else $annotatable_element.annotate('cancel')
       else $annotatable_element.annotate('cancel')
 

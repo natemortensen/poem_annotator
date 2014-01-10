@@ -62,7 +62,7 @@ afterAnnotationRender = ($annotation) ->
 	  input_name = $this.data('input-name')
 	  $input = $annotation.find("input[name=#{input_name}]")
 	  $input.val $this.text()
-	  $annotation.find('button[type=submit]').show()
+	  $annotation.find('button').show()
 
 createAnnotation = (data) ->
 	response = {}
@@ -104,7 +104,7 @@ $ ->
 				container: $('ul#annotations')[0]
 				position: 'left'
 				offset_amount: 25
-				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert small right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content' data-input-name='content' contenteditable='true'></p><div style='clear: both;'></div></div><form><input type='hidden' name='content'></input><button type='submit' class='hide small'>Update</button><button type='button' class='secondary annotate-revert'>Revert</button></form>"
+				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert small right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content' data-input-name='content' contenteditable='true'></p><div style='clear: both;'></div></div><form><input type='hidden' name='content'></input><button type='submit' class='hide small'>Update</button><button type='button' class='secondary annotate-revert small hide'>Cancel</button></form>"
 				tag_name: 'li'
 				existing_data: getAnnotations()
 				afterRender: afterAnnotationRender
