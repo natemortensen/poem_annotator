@@ -57,12 +57,32 @@ afterAnnotationRender = ($annotation) ->
 	img_url = $img.text()
 	$img.replaceWith("<img src='#{img_url}' class='left'>")
 
-saveAnnotation = (data) ->
+	$annotation.on 'blur keyup paste input', '[contenteditable]', ->
+	  $this = $(this)
+	  input_name = $this.data('input-name')
+	  $input = $annotation.find("input[name=#{input_name}]")
+	  $input.val $this.text()
+	  $annotation.find('button[type=submit]').show()
+
+createAnnotation = (data) ->
 	response = {}
 	$.ajax
 		type: "POST"
 		async: false
 		url: window.location.pathname + '/annotations'
+		data: data
+		success: (json) ->
+			response['annotation'] = json
+			response['status'] = 'success'
+		dataType: 'json'
+	response
+
+updateAnnotation = (data) ->
+	response = {}
+	$.ajax
+		type: "PATCH"
+		async: false
+		url: window.location.pathname + '/annotations/' + data['annotation']['annotate_id']
 		data: data
 		success: (json) ->
 			response['annotation'] = json
@@ -84,12 +104,13 @@ $ ->
 				container: $('ul#annotations')[0]
 				position: 'left'
 				offset_amount: 25
-				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert small right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content'></p><div style='clear: both;'></div></div>"
+				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert small right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content' data-input-name='content' contenteditable='true'></p><div style='clear: both;'></div></div><form><input type='hidden' name='content'></input><button type='submit' class='hide small'>Update</button><button type='button' class='secondary annotate-revert'>Revert</button></form>"
 				tag_name: 'li'
 				existing_data: getAnnotations()
 				afterRender: afterAnnotationRender
+				create: createAnnotation
 				render_from_marks: false
-				save: saveAnnotation
+				update: updateAnnotation
 				delete: deleteAnnotations
 			article:
 				update: updatePoem

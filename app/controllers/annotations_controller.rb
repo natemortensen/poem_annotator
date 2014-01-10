@@ -34,7 +34,7 @@ class AnnotationsController < ApplicationController
   def update
     respond_to do |format|
       if @annotation.update(annotation_params)
-        format.json { head :no_content }
+        format.json { render action: 'show', status: :created, locals: {current_user: current_user} }
       else
         format.json { render json: @annotation.errors, status: :unprocessable_entity }
       end

@@ -142,6 +142,37 @@
   flattenObject = (array) ->
     $(array[0]).add(array[1])
 
+  setMarkAttributes = (attributes, $marks) ->
+    html_attr = {}
+    $.each attributes, (name, value) -> 
+      html_attr["data-#{name}"] = value unless name == 'annotateEditable'
+    console.log html_attr
+    $marks.attr(html_attr).addClass('annotated').removeClass('temp annotate-selected')
+
+  renderSteps = ($annotatable_element, data, action) ->
+    settings = $annotatable_element.data()
+
+    valid = settings.annotation.beforeRender.apply($annotatable_element, [data]) if typeof settings.annotation.beforeRender is "function"
+    if valid? && valid && typeof(settings.annotation.render) is "function" && ($annotation = settings.annotation.render.apply $annotatable_element, [data]) instanceof jQuery
+      settings.annotation.afterRender.apply($annotatable_element, [$annotation]) if typeof settings.annotation.afterRender is "function"
+
+      $annotation.data(data.annotation)
+      $marks = if action == 'new' then $annotatable_element.find('mark.temp') else $annotatable_element.annotate('associated', $annotation)
+      console.log $marks
+      setMarkAttributes camelizeObject(data.annotation), $marks
+
+      $annotation.attr('data-annotatable-id', settings._annotatable_id).find('.annotate-remove').click ->
+        $annotatable_element.annotate('remove', $(this))
+      $annotation.find('.annotate-revert').click ->
+        $annotatable_element.annotate('revert', $annotation)
+      bindAnnotationUpdate($annotation, $annotatable_element)
+      $annotatable_element.annotate('_bindEvents', $marks)
+      $annotatable_element.annotate('cancel')
+      sendArticle($annotatable_element)
+      true
+    else
+      false
+
 
   
   methods =
@@ -181,7 +212,8 @@
           tag_name: 'div'                                               # String, valid tagName for annotation
           template: null                                                # String, HTML template for annotation to be inserted into the DOM
           container: $('body')[0]                                       # Element, where to insert rendered annotations if no callback is specified.        
-          save: methods['_createAnnotation']                            # Function(annotation_data), called after annotation dialog form is submitted
+          create: methods['_createAnnotation']                          # Function(annotation_data), called after annotation dialog form is submitted
+          update: methods['_createAnnotation']
           beforeRender: -> true                                         # Function(annotation_data), called before annotation is rendered
           render: methods['_renderAnnotation']                          # Function(annotation_data), render annotation template, or error message, overrides default functionality. Called after save. Must return true if successful
           afterRender: null                                             # Function(annotation_data), called after annotation is rendered
@@ -191,6 +223,7 @@
           offTrigger: methods['_defaultOffTrigger']                     # Function($marks, $annotation), called whenever the mouse leaves the top-level mark (and optionally the matching annotation)
           existing_data: []                                             # [{annotation1}, {annotation2}], Array of annotation data in JSON format. Keys should be "camelCased"
           include_time: false                                           # Boolean, determines whether Date.toString() will be included as part of the annotation JSON object
+          render_from_marks: true                                       # Boolean, determines whether annotations are also rendered from marks in the article as a fallback on init.
         article:
           update: null                                                  # Function(article_html), called whenever a permanent mark is added or removed to the article
         mark:
@@ -392,6 +425,20 @@
                 flattenObject(params).addClass('annotate-selected')
                 settings.annotation.onTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
       
+      # bind annotation form submit to update action
+      $annotations.find('form').submit (e) ->
+        settings = $annotatable_element.data()
+        e.preventDefault()
+
+        form_data = serializeObject(this, {annotate_id: $annotations.data('annotate-id')})
+        response = settings.annotation.update(form_data)
+
+        $annotations.remove()
+        $marks = $annotatable_element.annotate('associated', $annotations)
+        unless response == false
+          renderSteps($annotatable_element, response, 'update')
+          sendArticle($annotatable_element)
+
       # bind .annotate('build') to text-select event, if applicable
       $annotatable_element.unbind('mouseup').mouseup (e) ->
         if settings.mark.trigger_type == 'click' || settings.annotation.trigger_type == 'click'
@@ -570,7 +617,7 @@
             delete extras.annotate_time unless settings.annotation.include_time
 
             form_data = serializeObject(this, extras)
-            response = settings.annotation.save(form_data)
+            response = settings.annotation.create(form_data)
 
             html_attr = {}
             $.each response.annotation, (name, value) -> html_attr["data-#{name.replace('_', '-')}"] = value

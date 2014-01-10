@@ -20,8 +20,6 @@ mark.annotate-hidden { background: none; }
 .annotation-inner {padding-top: 5px; }
 
 .annotate-annotation.annotate-selected {
-	background: yellow;
-	color: #000;
 	z-index: 110;
 	display: block;
 }
