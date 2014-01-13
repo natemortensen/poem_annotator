@@ -165,7 +165,7 @@
       $marks = $annotatable_element.annotate('select', data.annotation.annotate_id, 'mark')
     setMarkAttributes(data.annotation, $marks)
 
-    # Remove any previous annotations
+    # Remove any previous annotations if valid
     $annotatable_element.annotate('associated', $marks).remove() if $.inArray(data.status, ['success', '200', 200]) > -1
 
     valid_annotation = settings.annotation.beforeRender.apply($annotatable_element, [data]) if typeof settings.annotation.beforeRender is "function"
