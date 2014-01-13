@@ -223,18 +223,18 @@
           tag_name: 'div'                                               # String, valid tagName for annotation
           template: null                                                # String, HTML template for annotation to be inserted into the DOM
           container: $('body')[0]                                       # Element, where to insert rendered annotations if no callback is specified.        
+          trigger_type: 'click'                                         # 'select' | 'click' | null, specifies which type of event triggers the onTrigger and offTrigger callbacks
+          include_time: false                                           # Boolean, determines whether Date.toString() will be included as part of the annotation JSON object
+          render_from_marks: true                                       # Boolean, determines whether annotations are also rendered from marks in the article as a fallback on init.
+          existing_data: []                                             # [{annotation1}, {annotation2}], Array of annotation data in JSON format. Keys should be "camelCased"
           create: methods['_createAnnotation']                          # Function(annotation_data), called after annotation dialog form is submitted
           update: methods['_createAnnotation']
           beforeRender: -> true                                         # Function(annotation_data), called before annotation is rendered
           render: methods['_renderAnnotation']                          # Function(annotation_data), render annotation template, or error message, overrides default functionality. Called after save. Must return true if successful
           afterRender: null                                             # Function(annotation_data), called after annotation is rendered
           delete: null                                                  # Function([annotate_id1, annotate_id2, ...]), called after annotation(s) are removed
-          trigger_type: 'click'                                         # 'select' | 'click' | null, specifies which type of event triggers the onTrigger and offTrigger callbacks
           onTrigger: methods['_defaultOnTrigger']                       # Function($marks, $annotation), called whenever the mouse enters the top-level mark (and optionally the matching annotation)
           offTrigger: methods['_defaultOffTrigger']                     # Function($marks, $annotation), called whenever the mouse leaves the top-level mark (and optionally the matching annotation)
-          existing_data: []                                             # [{annotation1}, {annotation2}], Array of annotation data in JSON format. Keys should be "camelCased"
-          include_time: false                                           # Boolean, determines whether Date.toString() will be included as part of the annotation JSON object
-          render_from_marks: true                                       # Boolean, determines whether annotations are also rendered from marks in the article as a fallback on init.
         article:
           update: null                                                  # Function(article_html), called whenever a permanent mark is added or removed to the article
         mark:

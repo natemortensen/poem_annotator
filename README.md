@@ -70,6 +70,8 @@ $(article).annotate(options);
 
 **Note: This element is assumed to include only the article and all changes to this area will be saved.**
 
+### Methods
+
 **Build:** Mark text and render the dialog to allow user to enter annotation contents:
 
 ```javascript
@@ -178,7 +180,7 @@ Amount of pixels between text and dialog, or pixels between document edge and di
 
 ##### position
 
-Type: `String`
+Type: `String` 
 Options: `'top', 'bottom', 'left', 'right', null`  
 Default: `'top'`
 
@@ -221,10 +223,214 @@ Called after dialog is rendered
 
 Arguments: `$dialog`
 
-Called before *.annotate('cancel')*
+Called before `.annotate('cancel')`
 
 ##### afterCancel
 
 Arguments: `none`
 
-Called after *.annotate('cancel')*
+Called after `.annotate('cancel')`
+
+#### Annotation Object
+
+#### Attributes
+
+##### class
+
+Type: `String`  
+Default: `''`
+
+Classes for the annotation element (in addition to *.annotate-annotation*), separated by spaces
+
+##### tag_name
+
+Type: `String`  
+Default: `'div'`
+
+Specifies which type of tag the annotation template will be wrapped in
+
+##### offset_amount
+
+Type: `Integer`  
+Default: `10`
+
+Amount of pixels between text and annotation, or pixels between document edge and annotation depending on the *position* attribute
+
+##### position
+
+Type: `String` 
+Options: `'top', 'bottom', 'left', 'right', null`  
+Default: `'top'`
+
+float popup left/right, or hover above/below selected text
+
+##### template
+
+Type: `String`
+
+innerHTML template for annotation, should contain a *\<form\>* element
+
+##### container
+
+Type: `jQuery object`  
+Default: `$('body')`
+
+Where to insert rendered annotations when *annotation.position* is `null`. Orphaned annotations will always be placed here
+
+##### trigger_type
+
+Type: `String`
+Options: `'hover', 'click', null`  
+Default: `hover`
+
+Specifies which type of event triggers the onTrigger and offTrigger callbacks for annotation elements
+
+##### include_time 
+
+Type: `Boolean`
+Default: `false`
+
+Determines whether Date.toString() will be included as part of the annotation JSON object
+
+##### render_from_marks 
+
+Type: `Boolean`
+Default: `true`
+
+Determines whether annotations are also rendered from marks in the article as a fallback on initialization
+
+##### existing_data
+
+Type: `Array`
+Default: `[]`
+Example:
+```javascript
+[
+  {
+    annotate_id: "yIqrHKpUTTP7A3Qk",
+    annotate_context: "In the morning",
+    content: "First annotation",
+    annotate_editable: 1,
+    user: "js_dev"
+  }, {
+    annotate_id: "JPsQMk2buw8xuyPA",
+    annotate_context: "I want to photograph",
+    content: "Second annotation",
+    annotate_editable: 1,
+    user: "js_dev"
+  }
+]
+```
+
+Array of annotation data in JSON format
+
+#### Callbacks
+
+##### create
+
+Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
+
+Send AJAX request to post annotation to database. Must return JSON object with status == “success” or 200 if successful. Example: 
+
+```javascript
+{
+  annotation: {
+    annotate_id: "aX5D3as45xrj44",
+    annotate_context: "Part of the article.",
+    content: "This is an annotation.",
+    user: "js_dev"
+  },
+  status: "success"
+}
+```
+
+##### update
+
+Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
+
+Send AJAX request to update annotation record in database. Must return JSON object with *status* equal to `"success"` or `200` if successful.  
+Example: 
+
+```javascript
+{
+  annotation: {
+    annotate_id: "aX5D3as45xrj44",
+    annotate_context: "Part of the article.",
+    content: "This is an annotation.",
+    user: "js_dev"
+  },
+  status: "success"
+}
+```
+
+##### beforeRender
+
+Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
+
+Called before `annotation.render()`
+
+##### render
+
+Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
+
+Render annotation template, or error message (depending on status), overrides default functionality. *Must return a jQuery object containing the annotation DOM element, otherwise the process will halt.*
+
+##### afterRender
+
+Arguments: `$annotation`
+
+Called after `annotation.render()`
+
+##### delete
+
+Arguments: `[first_annotate_id, second_annotate_id]`
+
+Send AJAX request to remove annotation(s) from database. Called from `.annotate(‘remove’)` and `.annotate(‘removeall’)`
+
+##### onTrigger
+
+Arguments: `$marks, $annotation`
+
+Called when user enters an annotation, depending on the trigger
+
+##### offTrigger
+
+Arguments: `$marks, $annotation`
+
+Called when user exits an annotation, depending on the trigger
+
+### Article Object
+
+#### Callbacks
+
+##### update
+
+Arguments: `article_html` (String)
+
+Send AJAX request to update article in database after the element is removed from DOM.
+
+### Mark Object
+
+#### Attributes
+
+##### trigger_type
+
+Type: `String`
+Options: `'hover', 'click', null`  
+Default: `hover`
+
+Specifies which type of event triggers the onTrigger and offTrigger callbacks for mark elements
+
+#### Callbacks
+
+##### onTrigger
+
+Arguments: `$marks, $annotation`
+
+Called when user enters a mark, depending on the trigger
+
+##### offTrigger
+
+Arguments: `$marks, $annotation`
+
+Called when user exits a mark, depending on the trigger
