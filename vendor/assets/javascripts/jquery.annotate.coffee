@@ -153,11 +153,20 @@
   setMarkAttributes = (attributes, $marks) ->
     html_attr = {}
     $.each attributes, (name, value) -> 
-      html_attr["data-#{name}"] = value unless name == 'annotateEditable'
-    $marks.attr(html_attr).addClass('annotated').removeClass('temp annotate-selected')
+      html_attr["data-#{name.replace('_', '-')}"] = value unless name == 'annotate_editable'
+    $marks.removeClass('annotate-selected').attr(html_attr)
 
   renderSteps = ($annotatable_element, data, action) ->
     settings = $annotatable_element.data()
+
+    if action == 'new'
+      $marks = $annotatable_element.find('mark.temp')
+    else
+      $marks = $annotatable_element.annotate('select', data.annotation.annotate_id, 'mark')
+    setMarkAttributes(data.annotation, $marks)
+
+    # Remove any previous annotations
+    $annotatable_element.annotate('associated', $marks).remove() if $.inArray(data.status, ['success', '200', 200]) > -1
 
     valid_annotation = settings.annotation.beforeRender.apply($annotatable_element, [data]) if typeof settings.annotation.beforeRender is "function"
     if valid_annotation? && valid_annotation && typeof(settings.annotation.render) is "function" && ($annotation = settings.annotation.render.apply $annotatable_element, [data]) instanceof jQuery
@@ -165,10 +174,9 @@
 
       annotation_attr = camelizeObject(data.annotation)
       $annotation.data(annotation_attr)
-      $marks = if action == 'new' then $annotatable_element.find('mark.temp') else $annotatable_element.annotate('associated', $annotation)
-      setMarkAttributes(annotation_attr, $marks)
-
       $annotation.attr('data-annotatable-id', settings._annotatable_id)
+
+      $marks.addClass('annotated').removeClass('temp')
       $annotatable_element.annotate('_bindEvents', $marks)
       $annotatable_element.annotate('cancel')
       sendArticle($annotatable_element)
@@ -430,11 +438,11 @@
         settings = $annotatable_element.data()
         e.preventDefault()
 
-        form_data = serializeObject(this, {annotate_id: $annotations.data('annotate-id')})
+        form_data = serializeObject(this, {annotate_id: $($(this).parents('.annotate-annotation')[0]).data('annotate-id')})
         response = settings.annotation.update(form_data)
 
         $marks = $annotatable_element.annotate('associated', $annotations)
-        $annotations.remove() if renderSteps($annotatable_element, response, 'update')
+        renderSteps($annotatable_element, response, 'update')
 
       # bind .annotate('build') to text-select event, if applicable
       $annotatable_element.unbind('mouseup').mouseup (e) ->
@@ -510,9 +518,11 @@
     revert: ($elementOrId) ->
       $annotatable_element = $(this)
       settings = $annotatable_element.data()
-      window.annotate_id = if typeof($elementOrId) == 'object' then getAnnotateId($elementOrId, settings.annotation.tag_name) else $elementOrId
+      annotate_id = if typeof($elementOrId) == 'object' then getAnnotateId($elementOrId, settings.annotation.tag_name) else $elementOrId
 
       $annotation = $annotatable_element.annotate('select', annotate_id, settings.annotation.tag_name)
+      $marks = $annotatable_element.annotate('select', annotate_id, 'mark').removeClass('annotate-selected')
+
       response =
         annotation: $annotation.data()
         status: 'success'
@@ -630,12 +640,7 @@
 
             form_data = serializeObject(this, extras)
             response = settings.annotation.create(form_data)
-
-            html_attr = {}
-            $.each response.annotation, (name, value) -> html_attr["data-#{name.replace('_', '-')}"] = value
-
-            $marks = $('mark.temp', $annotatable_element[0])
-            $marks.attr(html_attr)
+            $marks = $annotatable_element.find('mark.temp')
 
             renderSteps($annotatable_element, response, 'new')
 
