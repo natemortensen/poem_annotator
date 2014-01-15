@@ -16,9 +16,8 @@
 
 		<h4 id="poem_title"><%= @poem.title %></h4>
 
-		<div id="poem" class="annotatable" contenteditable="true">
-		  <%= @poem.content.html_safe %>
-		</div>
+		<iframe src="http://localhost:3000/poems/<%= params[:id] %>/content" style="width: 100%; height: 800px;" frameBorder="0"></iframe>
+
 	</div>
 
 	<div class="large-2 columns">

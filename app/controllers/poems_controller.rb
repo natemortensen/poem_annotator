@@ -12,6 +12,11 @@ class PoemsController < ApplicationController
   def show
   end
 
+  def content
+    @poem = Poem.find(params[:poem_id])
+    render layout: false
+  end
+
   # GET /poems/new
   def new
     @poem = Poem.new

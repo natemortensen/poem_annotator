@@ -1,0 +1,6 @@
+<%= stylesheet_link_tag 'poems' %>
+<%= stylesheet_link_tag 'jquery.annotate' %>
+
+<div id="poem" class="annotatable" contenteditable="true">
+  <%= @poem.content.html_safe %>
+</div>

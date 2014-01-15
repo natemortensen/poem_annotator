@@ -55,6 +55,10 @@
   getTextLength = (annotate_id) ->
     $("mark[data-annotate-id=#{annotate_id}]").text().length
 
+  getContainerIframe = (el) ->
+    $('iframe').each -> return(this) if $(this).contents().find(el).length > 0
+    null
+
   inlineOffset = (mark) ->
     el = $("<i/>").css("display", "inline").insertBefore(mark)
     pos = el.offset()
@@ -179,7 +183,7 @@
       $marks.addClass('annotated').removeClass('temp')
       $annotatable_element.annotate('_bindEvents', $marks)
       $annotatable_element.annotate('cancel')
-      sendArticle($annotatable_element)
+      sendArticle($annotatable_element) unless action == 'revert'
       true
     else
       false
@@ -189,7 +193,7 @@
   methods =
 
     init: (options) ->
-      $annotatable_element = $(this)
+      window.$annotatable_element = $(this)
       settings = $annotatable_element.data()
 
       # initialize rangy and a marker if not present
@@ -236,6 +240,7 @@
           onTrigger: methods['_defaultOnTrigger']                       # Function($marks, $annotation), called whenever the mouse enters the top-level mark (and optionally the matching annotation)
           offTrigger: methods['_defaultOffTrigger']                     # Function($marks, $annotation), called whenever the mouse leaves the top-level mark (and optionally the matching annotation)
         article:
+          iframe: getContainerIframe($annotatable_element[0])           # jQuery object containing the article's parent iFrame element
           update: null                                                  # Function(article_html), called whenever a permanent mark is added or removed to the article
         mark:
           trigger_type: 'click'                                         # 'select' | 'click' | null, specifies which type of event triggers the onTrigger and offTrigger callbacks
@@ -262,9 +267,6 @@
       $('mark.annotated', this).each ->
         $(this).removeClass('annotate-hidden') if hasAssociated $annotatable_element, $(this)
 
-      # bind events for existing annotations
-      $(this).annotate('_bindEvents')
-
       # bind buttons that conform to naming conventions
       $('.annotate-removeall').click -> $annotatable_element.annotate('removeall')
       $('.annotate-destroy').click -> $annotatable_element.annotate('destroy')
@@ -282,6 +284,7 @@
       $('body').append("<#{settings.dialog.tag_name} class='annotate-dialog#{' ' + settings.dialog.class}' data-annotatable-id='#{settings._annotatable_id}'>#{settings.dialog.template}</#{settings.dialog.tag_name}>")
       $dialog = $(".annotate-dialog[data-annotatable-id=#{settings._annotatable_id}]")
       $annotatable_element.annotate 'position', $dialog
+      return $dialog
 
     # default callback for creating annotations in database
     _createAnnotation: (data) -> $.extend data, {status: 'success'}
@@ -297,7 +300,7 @@
 
         
         annotate_id = annotation_attr['annotateId']
-        $mark = $("mark[data-annotate-id=#{annotate_id}]:first", this)
+        $mark = $annotatable_element.find("mark[data-annotate-id=#{annotate_id}]:first")
 
         if settings.annotation.template?
           annotation_innerHtml = settings.annotation.template
@@ -313,7 +316,7 @@
         if $annotatable_element.annotate('select', annotate_id, 'mark')[0]? && settings.annotation.position?
           $('body').append(annotation_html)
         else
-          $(settings.annotation.container).append annotation_html
+          settings.annotation.container.append annotation_html
 
         $annotation = $(".annotate-annotation[data-annotate-id=#{annotate_id}]")
 
@@ -354,13 +357,9 @@
       $annotatable_element = $(this)
       settings = $annotatable_element.data()
 
-      if $mark?
-        annotate_id = $mark.data('annotate-id')
-        $marks = $("mark[data-annotate-id=#{$mark.data('annotate-id')}]")
-        $annotations = $annotatable_element.annotate('associated', $marks)
-      else
-        $marks = $annotatable_element.find('mark.annotated').not('.annotate-hidden')
-        $annotations = $(".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]")
+      annotate_id = $mark.data('annotate-id')
+      $marks = $annotatable_element.find("mark[data-annotate-id=#{$mark.data('annotate-id')}]")
+      $annotations = $annotatable_element.annotate('associated', $marks)
 
       # bind marks based on trigger type
       if $marks[0]? && settings.mark.trigger_type?
@@ -472,20 +471,22 @@
 
     # remove annotation and associated mark from DOM and call delete_annotations callback
     remove: ($elementOrId) ->
-      settings = $(this).data()
+      $annotatable_element = $(this)
+      settings = $annotatable_element.data()
       annotate_id = if typeof($elementOrId) == 'object' then getAnnotateId($elementOrId, settings.annotation.tag_name) else $elementOrId
 
       if typeof(settings.annotation.delete) is "function"
         deleted = settings.annotation.delete.apply(this, [[annotate_id]])
         if deleted[0]?
           $.inArray(deleted, annotate_id) > -1
-          $("mark[data-annotate-id=#{annotate_id}]", this).contents().unwrap()
+          $annotatable_element.find("mark[data-annotate-id=#{annotate_id}]", this).contents().unwrap()
           $(".annotate-annotation[data-annotate-id=#{annotate_id}]").remove()
           sendArticle $(this)
 
     # remove all annotations and associated marks from DOM and call delete_annotations callback
     removeall: ->
-      settings = $(this).data()
+      $annotatable_element = $(this)
+      settings = $annotatable_element.data()
       if typeof settings.annotation.delete is "function"
         annotate_ids = []
         $(this).annotate('cancel')
@@ -495,21 +496,24 @@
 
         deleted = settings.annotation.delete.apply(this, [annotate_ids])
         $.each deleted, (i, id) ->
-          $("mark[data-annotate-id=#{id}]").contents().unwrap()
+          $annotatable_element.find("mark[data-annotate-id=#{id}]").contents().unwrap()
           $(".annotate-annotation[data-annotate-id=#{id}]").remove()
         sendArticle $(this)
 
     # select elements by data-annotate-id attribute
-    select: (annotate_id, elementType = '*') -> $("#{elementType}[data-annotate-id=#{annotate_id}]")
+    select: (annotate_id, elementType = '*') ->
+      if elementType.toLowerCase() == 'mark'
+        $(this).find("mark[data-annotate-id=#{annotate_id}]")
+      else
+        $("#{elementType}[data-annotate-id=#{annotate_id}]")
 
     # unbind all relevant events and remove annotations from DOM
     destroy: ->
       $annotatable_element = $(this)
       annotatable_id = $(this).data('_annotatable_id')
       tag_name = $(this).data('annotation').tag_name
-      
-      $('mark.annotated', this).unbind()
-      $("*[data-annotatable-id=#{annotatable_id}]").unbind('click')
+
+      $annotatable_element.find('mark.annotated').unbind()
       $("#{tag_name}[data-annotatable-id=#{annotatable_id}]").remove()
       $annotatable_element.annotate('associated', $('mark.annotated', this)).remove()
       $annotatable_element.unbind('mouseup').removeData()
@@ -524,7 +528,7 @@
       $marks = $annotatable_element.annotate('select', annotate_id, 'mark').removeClass('annotate-selected')
 
       response =
-        annotation: $annotation.data()
+        annotation: decamelizeObject($annotation.data())
         status: 'success'
 
       $annotation.remove()
@@ -572,6 +576,10 @@
         mark_left = inlineOffset(mark).left
         mark_top = $(mark).offset().top
 
+        if settings.article.iframe?
+          mark_left += settings.article.iframe.offset().left
+          mark_top += settings.article.iframe.offset().top
+
         switch options.direction
           when 'left'
             $el.css
@@ -600,9 +608,8 @@
       settings = $annotatable_element.data()
 
       # get selected text
-      
-      sel = rangy.getSelection()
-      if sel.rangeCount > 0 && (selected_text = sel.toString()) != ''
+      sel = if settings.article.iframe? then rangy.getSelection(settings.article.iframe[0]) else rangy.getSelection()
+      if sel.rangeCount > 0 && (window.selected_text = sel.toString()) != ''
         range = sel.getRangeAt(0)
         parentElement = range.commonAncestorContainer
         parentElement = parentElement.parentNode if parentElement.nodeType is 3 && parentElement.parentNode?
@@ -611,22 +618,21 @@
         $(this).annotate('cancel')
         
         # mark selected text and deselect
-        settings.tempMarker.applyToSelection()
-        sel.removeAllRanges()
+        if settings.article.iframe? then settings.tempMarker.applyToSelection(settings.article.iframe[0]) else settings.tempMarker.applyToSelection()
+        sel.removeAllRanges() unless settings.dialog.build_on_select
 
         # replace tempmark with mark.temp to avoid issues with overlapping marks generated by rangy
-        $('tempmark').wrap('<mark class="temp"></mark>')
-        $('mark.temp tempmark').contents().unwrap()
+        $annotatable_element.find('tempmark').wrap('<mark class="temp"></mark>')
+        $annotatable_element.find('mark.temp tempmark').contents().unwrap()
 
         # render annotation dialog and callbacks
         before_result = settings.dialog.beforeCreate.apply($annotatable_element[0])
         if typeof settings.dialog.beforeCreate is "function" && before_result != false
-          settings.dialog.create.apply($annotatable_element[0]) if typeof settings.dialog.create is "function"
+          $dialog = settings.dialog.create.apply($annotatable_element[0]) if typeof settings.dialog.create is "function"
 
-          $dialog = $(".annotate-dialog[data-annotatable-id=#{settings._annotatable_id}]")
+          $dialog.attr('data-annotatable-id', settings._annotatable_id).find(':input:first').focus()
           $dialog.find('.annotate-cancel').click -> $annotatable_element.annotate('cancel')
           settings.dialog.afterCreate.apply $annotatable_element[0], [$dialog] if typeof settings.dialog.afterCreate is "function"
-          $dialog.find(':input:first').focus()
           $dialog.keyup (e) -> $annotatable_element.annotate('cancel') if e.keyCode is 27
 
           # bind annotation dialog form

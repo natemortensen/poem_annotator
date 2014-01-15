@@ -10,6 +10,7 @@ afterDialogCreate = ($dialog) ->
 	  $input.val $this.text()
 
 updatePoem = (article_html) ->
+	console.log article_html
 	response = false
 	$.ajax
 	  type: "PATCH"
@@ -93,15 +94,15 @@ updateAnnotation = (data) ->
 
 $ ->
 	$('.save-article').click ->
-		updatePoem $('#poem').html()
+		updatePoem $('iframe').contents().find('#poem').html()
 
 	$('#show_orphaned').change ->
 		$('#orphaned').toggle()
 
-	if $('#poem.annotatable').length > 0
-		$('#poem.annotatable').annotate
+	if $('iframe').contents().find('#poem.annotatable').length > 0
+		$('iframe').contents().find('#poem.annotatable').annotate
 			annotation:
-				container: $('ul#annotations')[0]
+				container: $('ul#annotations')
 				position: 'left'
 				offset_amount: 25
 				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert small right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content' data-input-name='content' contenteditable='true'></p><div style='clear: both;'></div></div><form><input type='hidden' name='content'></input><button type='submit' class='hide small'>Update</button><button type='button' class='secondary annotate-revert small hide'>Cancel</button></form>"
@@ -113,6 +114,7 @@ $ ->
 				update: updateAnnotation
 				delete: deleteAnnotations
 			article:
+				iframe: $('iframe:first')
 				update: updatePoem
 			dialog:
 				template: '<form><div class="row"><div class="errors"></div><input name="content" type="hidden"></input><p class="bold">Annotation</p><p class="dialog-content" contenteditable="true" data-ph="Annotation content" data-input-name="content"></p></div><div class="row"><button type="submit" class="small">Add Annotation</button> <button type="button" class="annotate-cancel button secondary small">Cancel</button></div></form>'

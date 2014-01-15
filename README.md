@@ -211,7 +211,7 @@ Called before dialog is rendered. Also acts as validation. If *false* is returne
 
 Arguments: `none`
 
-Render dialog into DOM, overrides default functionality. Element should have a class of *.annotate-dialog* and contain a *\<form\>* element
+Render dialog into DOM, overrides default functionality. Element should contain a *\<form\>* element. Function must return the dialog jQuery object.
 
 ##### afterCreate
 
@@ -231,7 +231,7 @@ Arguments: `none`
 
 Called after `.annotate('cancel')`
 
-#### Annotation Object
+### Annotation Object
 
 #### Attributes
 
@@ -279,7 +279,7 @@ Where to insert rendered annotations when *annotation.position* is `null`. Orpha
 
 ##### trigger_type
 
-Type: `String`
+Type: `String` 
 Options: `'hover', 'click', null`  
 Default: `hover`
 
@@ -415,7 +415,7 @@ Send AJAX request to update article in database after the element is removed fro
 
 ##### trigger_type
 
-Type: `String`
+Type: `String` 
 Options: `'hover', 'click', null`  
 Default: `hover`
 

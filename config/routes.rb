@@ -6,6 +6,7 @@ PoemAnnotator::Application.routes.draw do
   get 'signout', to: 'sessions#destroy', as: 'signout'
 
   resources :poems, except: [:edit] do
+    get 'content'
     resources :annotations, except: [:edit, :new]
   end
   root to: 'poems#index'
