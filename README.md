@@ -8,7 +8,7 @@ jQuery.annotate is a jQuery plugin that makes annotating selections of text a br
 
 ## Requirements
 
-- [jQuery](http://www.jquery.com/) > 1.10.2
+- [jQuery](http://www.jquery.com/) &#8805; 1.10.2
 - [rangy](https://code.google.com/p/rangy/)
 - [rangy cssClassApplier module](https://code.google.com/p/rangy/wiki/CSSClassApplierModule)
 
@@ -231,12 +231,12 @@ Called after dialog is rendered
 
 ##### beforeCancel
 
-Arguments: `$dialog`
+Arguments: `$dialog`  
 Called before `.annotate('cancel')`
 
 ##### afterCancel
 
-Arguments: `none`
+Arguments: `none`  
 Called after `.annotate('cancel')`
 
 ### Annotation Object
@@ -374,7 +374,7 @@ Sample Response:
 
 ##### beforeRender
 
-Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
+Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`  
 Called before `annotation.render()`
 
 ##### render

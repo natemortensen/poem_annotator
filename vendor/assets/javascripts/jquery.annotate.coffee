@@ -237,7 +237,7 @@
           beforeRender: -> true                                         # Function(annotation_data), called before annotation is rendered
           render: methods['_renderAnnotation']                          # Function(annotation_data), render annotation template, or error message, overrides default functionality. Called after save. Must return true if successful
           afterRender: null                                             # Function(annotation_data), called after annotation is rendered
-          delete: null                                                  # Function([annotate_id1, annotate_id2, ...]), called after annotation(s) are removed
+          delete: methods['_deleteAnnotations']                          # Function([annotate_id1, annotate_id2, ...]), called after annotation(s) are removed
           onTrigger: methods['_defaultOnTrigger']                       # Function($marks, $annotation), called whenever the mouse enters the top-level mark (and optionally the matching annotation)
           offTrigger: methods['_defaultOffTrigger']                     # Function($marks, $annotation), called whenever the mouse leaves the top-level mark (and optionally the matching annotation)
         article:
@@ -289,6 +289,8 @@
 
     # default callback for creating annotations in database
     _createAnnotation: (data) -> $.extend data, {status: 'success'}
+
+    _deleteAnnotations: (annotate_ids) -> annotate_ids
 
     # default callback for rendering annotations
     _renderAnnotation: (data) ->
