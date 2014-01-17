@@ -10,7 +10,6 @@ afterDialogCreate = ($dialog) ->
 	  $input.val $this.text()
 
 updatePoem = (article_html) ->
-	console.log article_html
 	response = false
 	$.ajax
 	  type: "PATCH"
@@ -103,8 +102,8 @@ $ ->
 		$('iframe').contents().find('#poem.annotatable').annotate
 			annotation:
 				container: $('ul#annotations')
-				position: 'left'
-				offset_amount: 25
+				position: 'top'
+				offset_amount: 10
 				template: "<span class='annotate-fill-userImage'></span> <button type='button' class='annotate-remove button alert small right'>x</button> <div class='annotation-inner'><p class='bold annotate-fill-userName'></p><p class='annotate-fill-content' data-input-name='content' contenteditable='true'></p><div style='clear: both;'></div></div><form><input type='hidden' name='content'></input><button type='submit' class='hide small'>Update</button><button type='button' class='secondary annotate-revert small hide'>Cancel</button></form>"
 				tag_name: 'li'
 				existing_data: getAnnotations()

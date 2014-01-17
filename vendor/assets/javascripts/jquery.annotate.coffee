@@ -55,9 +55,10 @@
   getTextLength = (annotate_id) ->
     $("mark[data-annotate-id=#{annotate_id}]").text().length
 
-  getContainerIframe = (el) ->
-    $('iframe').each -> return(this) if $(this).contents().find(el).length > 0
-    null
+  window.getContainerIframe = (el) ->
+    $('iframe').each ->
+      return $(this) if $(this).contents().find(el).length > 0
+    [null]
 
   inlineOffset = (mark) ->
     el = $("<i/>").css("display", "inline").insertBefore(mark)
@@ -572,6 +573,7 @@
       scope = "mark[data-annotate-id=#{options.annotate_id}]:#{popup_placement}"
       mark = if options.annotate_id? then $("mark[data-annotate-id=#{options.annotate_id}]:#{popup_placement}", this)[0] else $("mark.temp:#{popup_placement}", this)[0]
         
+      console.log $el.height()
       if mark?
         mark_left = inlineOffset(mark).left
         mark_top = $(mark).offset().top

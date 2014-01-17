@@ -8,14 +8,24 @@ jQuery.annotate is a jQuery plugin that makes annotating selections of text a br
 
 ## Requirements
 
-- [jQuery](http://www.jquery.com/) > 1.9
+- [jQuery](http://www.jquery.com/) > 1.10.2
 - [rangy](https://code.google.com/p/rangy/)
 - [rangy cssClassApplier module](https://code.google.com/p/rangy/wiki/CSSClassApplierModule)
 
 ## Usage
 
-Place the jquery.annotate.js in your javascript directory. 
+Place the jquery.annotate.js and its dependencies in your javascript directory. 
 Place the jquery.annotate.css in your stylesheets directory.
+
+```html
+<head>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+  <script src="rangy-core.js"></script>
+  <script src="rangy-cssclassapplier.js"></script>
+  <script src="jquery.annotate.js"></script>
+  <link rel="stylesheet" type="text/css" href="jquery.annotate.css">
+</head>
+```
 
 Initialize jQuery.annotate on the area to be annotated
 
@@ -180,7 +190,7 @@ Amount of pixels between text and dialog, or pixels between document edge and di
 
 ##### position
 
-Type: `String` 
+Type: `String`  
 Options: `'top', 'bottom', 'left', 'right', null`  
 Default: `'top'`
 
@@ -222,13 +232,11 @@ Called after dialog is rendered
 ##### beforeCancel
 
 Arguments: `$dialog`
-
 Called before `.annotate('cancel')`
 
 ##### afterCancel
 
 Arguments: `none`
-
 Called after `.annotate('cancel')`
 
 ### Annotation Object
@@ -258,7 +266,7 @@ Amount of pixels between text and annotation, or pixels between document edge an
 
 ##### position
 
-Type: `String` 
+Type: `String`  
 Options: `'top', 'bottom', 'left', 'right', null`  
 Default: `'top'`
 
@@ -279,7 +287,7 @@ Where to insert rendered annotations when *annotation.position* is `null`. Orpha
 
 ##### trigger_type
 
-Type: `String` 
+Type: `String`  
 Options: `'hover', 'click', null`  
 Default: `hover`
 
@@ -287,22 +295,22 @@ Specifies which type of event triggers the onTrigger and offTrigger callbacks fo
 
 ##### include_time 
 
-Type: `Boolean`
+Type: `Boolean`  
 Default: `false`
 
 Determines whether Date.toString() will be included as part of the annotation JSON object
 
 ##### render_from_marks 
 
-Type: `Boolean`
+Type: `Boolean`  
 Default: `true`
 
 Determines whether annotations are also rendered from marks in the article as a fallback on initialization
 
 ##### existing_data
 
-Type: `Array`
-Default: `[]`
+Type: `Array`  
+Default: `[]`  
 Example:
 ```javascript
 [
@@ -328,9 +336,10 @@ Array of annotation data in JSON format
 
 ##### create
 
-Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
+Arguments: `{ annotation: {} }`
 
-Send AJAX request to post annotation to database. Must return JSON object with status == “success” or 200 if successful. Example: 
+Send AJAX request to post annotation to database. Must return JSON object with status == “success” or 200 if successful.  
+Sample Response: 
 
 ```javascript
 {
@@ -346,10 +355,10 @@ Send AJAX request to post annotation to database. Must return JSON object with s
 
 ##### update
 
-Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
+Arguments: `{ annotation: {} }`
 
 Send AJAX request to update annotation record in database. Must return JSON object with *status* equal to `"success"` or `200` if successful.  
-Example: 
+Sample Response: 
 
 ```javascript
 {
@@ -366,7 +375,6 @@ Example:
 ##### beforeRender
 
 Arguments: `{ annotation: { annotate_id: "aX5D3as45xrj44" } }`
-
 Called before `annotation.render()`
 
 ##### render
@@ -378,14 +386,13 @@ Render annotation template, or error message (depending on status), overrides de
 ##### afterRender
 
 Arguments: `$annotation`
-
 Called after `annotation.render()`
 
 ##### delete
 
 Arguments: `[first_annotate_id, second_annotate_id]`
 
-Send AJAX request to remove annotation(s) from database. Called from `.annotate(‘remove’)` and `.annotate(‘removeall’)`
+Send AJAX request to remove annotation(s) from database. Called from `.annotate('remove')` and `.annotate('removeall')`
 
 ##### onTrigger
 
@@ -415,7 +422,7 @@ Send AJAX request to update article in database after the element is removed fro
 
 ##### trigger_type
 
-Type: `String` 
+Type: `String`  
 Options: `'hover', 'click', null`  
 Default: `hover`
 
