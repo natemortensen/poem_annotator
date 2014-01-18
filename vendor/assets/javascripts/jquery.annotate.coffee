@@ -56,9 +56,12 @@
     $("mark[data-annotate-id=#{annotate_id}]").text().length
 
   window.getContainerIframe = (el) ->
+    matched_iframe = [null]
     $('iframe').each ->
-      return $(this) if $(this).contents().find(el).length > 0
-    [null]
+      if $(this).contents().find(el).length > 0
+        matched_iframe = $(this)
+        false
+    return matched_iframe
 
   inlineOffset = (mark) ->
     el = $("<i/>").css("display", "inline").insertBefore(mark)
@@ -553,7 +556,7 @@
           if $(this).prop("tagName") == 'MARK'
             $("*[data-annotate-id=#{annotate_id}]").not('mark').each -> annotations.push(this)
           else
-            $("mark[data-annotate-id=#{annotate_id}]").each -> marks.push(this)
+            $annotatable_element.find("mark[data-annotate-id=#{annotate_id}]").each -> marks.push(this)
 
       returned_elements = marks.concat(annotations).filter (val) -> val?
       $(returned_elements)
@@ -575,12 +578,11 @@
       scope = "mark[data-annotate-id=#{options.annotate_id}]:#{popup_placement}"
       mark = if options.annotate_id? then $("mark[data-annotate-id=#{options.annotate_id}]:#{popup_placement}", this)[0] else $("mark.temp:#{popup_placement}", this)[0]
         
-      console.log $el.height()
       if mark?
         mark_left = inlineOffset(mark).left
         mark_top = $(mark).offset().top
 
-        if settings.article.iframe.length > 0
+        if settings.article.iframe[0]?
           mark_left += settings.article.iframe.offset().left
           mark_top += settings.article.iframe.offset().top
 
