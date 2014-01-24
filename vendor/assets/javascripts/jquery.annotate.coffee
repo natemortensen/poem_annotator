@@ -55,7 +55,7 @@
   getTextLength = (annotate_id) ->
     $("mark[data-annotate-id=#{annotate_id}]").text().length
 
-  window.getContainerIframe = (el) ->
+  getContainerIframe = (el) ->
     matched_iframe = [null]
     $('iframe').each ->
       if $(this).contents().find(el).length > 0

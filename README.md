@@ -1,6 +1,6 @@
 # jQuery.annotate
 
-jQuery.annotate is a jQuery plugin that makes annotating selections of text a breeze.
+jQuery.annotate is a jQuery plugin that makes annotating selections of text a breeze. It is compatible with content housed within iframes and block-level contentEditable elements and is fully customizable to fit the needs of most websites. 
 
 ## Examples
 
@@ -8,7 +8,7 @@ jQuery.annotate is a jQuery plugin that makes annotating selections of text a br
 
 ## Requirements
 
-- [jQuery](http://www.jquery.com/) &#8805; 1.10.2
+- [jQuery](http://www.jquery.com/) &#8805; 1.6.0
 - [rangy](https://code.google.com/p/rangy/)
 - [rangy cssClassApplier module](https://code.google.com/p/rangy/wiki/CSSClassApplierModule)
 
