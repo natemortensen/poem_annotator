@@ -1,6 +1,6 @@
 
 (function($) {
-  var camelizeObject, decamelizeObject, default_dialog, flattenObject, generateAnnotateId, getAnnotateId, getCurrentTime, getTextLength, getTopMarkId, hasAssociated, inlineOffset, methods, renderSteps, selectedAnnotations, sendArticle, serializeObject, setMarkAttributes, titleize;
+  var camelizeObject, decamelizeObject, default_dialog, flattenObject, generateAnnotateId, getAnnotateId, getContainerIframe, getCurrentTime, getTextLength, getTopMarkId, hasAssociated, inlineOffset, methods, renderSteps, selectedAnnotations, sendArticle, serializeObject, setMarkAttributes, titleize;
   default_dialog = '<div class="errors"></div><form><label for="content">Content</label><input type="text" class="" value="" name="content" id="content"><input type="submit"> <button type="button" class="annotate-cancel">Cancel</button></form>';
   serializeObject = function(el, extras) {
     var arrayData, json, patterns, push_counters,
@@ -61,7 +61,7 @@
   getTextLength = function(annotate_id) {
     return $("mark[data-annotate-id=" + annotate_id + "]").text().length;
   };
-  window.getContainerIframe = function(el) {
+  getContainerIframe = function(el) {
     var matched_iframe;
     matched_iframe = [null];
     $('iframe').each(function() {
@@ -226,7 +226,6 @@
       $annotation.data(annotation_attr);
       $annotation.attr('data-annotatable-id', settings._annotatable_id);
       $marks.addClass('annotated').removeClass('temp');
-      $annotatable_element.annotate('_bindEvents', $marks);
       $annotatable_element.annotate('cancel');
       if (action !== 'revert') {
         sendArticle($annotatable_element);
@@ -324,15 +323,7 @@
           return $(this).removeClass('annotate-hidden');
         }
       });
-      $('.annotate-removeall').click(function() {
-        return $annotatable_element.annotate('removeall');
-      });
-      $('.annotate-destroy').click(function() {
-        return $annotatable_element.annotate('destroy');
-      });
-      $('.annotate-build').click(function() {
-        return $annotatable_element.annotate('build');
-      });
+      $annotatable_element.annotate('_bindEvents');
       if (!settings.ignore_warnings) {
         if (settings.article.update === methods['_updateArticle']) {
           return console.warn("It is highly recommended that you set a callback for updating the article");
@@ -430,132 +421,133 @@
         }
       }
     },
-    _bindEvents: function($mark) {
-      var $annotatable_element, $annotations, $marks, annotate_id, settings;
-      if ($mark == null) {
-        $mark = null;
-      }
+    _bindEvents: function() {
+      var $annotatable_element, settings;
       $annotatable_element = $(this);
       settings = $annotatable_element.data();
-      annotate_id = $mark.data('annotate-id');
-      $marks = $annotatable_element.find("mark[data-annotate-id=" + ($mark.data('annotate-id')) + "]");
-      $annotations = $annotatable_element.annotate('associated', $marks);
-      if (($marks[0] != null) && (settings.mark.trigger_type != null)) {
-        switch (settings.mark.trigger_type) {
-          case 'hover':
-            $marks.each(function() {
-              if ($annotatable_element.annotate('associated', $(this))[0] != null) {
-                return $(this).unbind('mouseenter mouseleave').hover(function(e) {
-                  var $selected_marks, params;
-                  annotate_id = getTopMarkId(e.currentTarget);
-                  $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark');
-                  if (typeof settings.mark.onTrigger === "function" && $(e.currentTarget).data('annotate-id') === annotate_id) {
-                    params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)];
-                    flattenObject(params).addClass('annotate-selected');
-                    return settings.mark.onTrigger.apply($annotatable_element[0], params);
-                  }
-                }, function(e) {
-                  var params;
-                  annotate_id = $(e.currentTarget).data('annotate-id');
-                  $marks = $annotatable_element.annotate('select', annotate_id, 'mark');
-                  if (typeof settings.mark.offTrigger === "function") {
-                    params = [$marks, $annotatable_element.annotate('associated', $marks)];
-                    flattenObject(params).removeClass('annotate-selected');
-                    return settings.mark.offTrigger.apply($annotatable_element[0], params);
-                  }
-                });
-              }
-            });
-            break;
-          case 'click':
-            $marks.each(function() {
-              if ($annotatable_element.annotate('associated', $(this))[0] != null) {
-                return $(this).unbind('click').click(function(e) {
-                  var $selected_marks, params;
-                  annotate_id = getTopMarkId(e.currentTarget);
-                  $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark');
-                  if (typeof settings.mark.onTrigger === "function" && $(e.currentTarget).data('annotate-id') === annotate_id) {
-                    e.stopPropagation();
-                    params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)];
-                    flattenObject(params).addClass('annotate-selected');
-                    return settings.mark.onTrigger.apply($annotatable_element[0], params);
-                  }
-                });
-              }
-            });
-        }
-      }
-      if (($annotations[0] != null) && (settings.annotation.trigger_type != null)) {
-        switch (settings.annotation.trigger_type) {
-          case 'hover':
-            $annotations.unbind('mouseenter mouseleave').hover(function(e) {
-              var params;
-              annotate_id = $(e.currentTarget).data('annotate-id');
-              $marks = $annotatable_element.annotate('select', annotate_id, 'mark');
-              if (typeof settings.annotation.onTrigger === "function") {
-                params = [$marks, $annotatable_element.annotate('associated', $marks)];
+      switch (settings.mark.trigger_type) {
+        case 'hover':
+          $annotatable_element.on('mouseenter', 'mark.annotated', function(e) {
+            var $selected_marks, annotate_id, params;
+            if ($annotatable_element.annotate('associated', $(this))[0] != null) {
+              annotate_id = getTopMarkId(e.currentTarget);
+              $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark');
+              if (typeof settings.mark.onTrigger === "function" && $(e.currentTarget).data('annotate-id') === annotate_id) {
+                params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)];
                 flattenObject(params).addClass('annotate-selected');
-                return settings.annotation.onTrigger.apply($annotatable_element[0], params);
+                return settings.mark.onTrigger.apply($annotatable_element[0], params);
               }
-            }, function(e) {
-              var params;
+            }
+          });
+          $annotatable_element.on('mouseleave', 'mark.annotated', function(e) {
+            var $marks, annotate_id, params;
+            if ($annotatable_element.annotate('associated', $(this))[0] != null) {
               annotate_id = $(e.currentTarget).data('annotate-id');
               $marks = $annotatable_element.annotate('select', annotate_id, 'mark');
-              if (typeof settings.annotation.offTrigger === "function") {
+              if (typeof settings.mark.offTrigger === "function") {
                 params = [$marks, $annotatable_element.annotate('associated', $marks)];
                 flattenObject(params).removeClass('annotate-selected');
-                return settings.annotation.offTrigger.apply($annotatable_element[0], params);
+                return settings.manrk.offTrigger.apply($annotatable_element[0], params);
               }
-            });
-            break;
-          case 'click':
-            $annotations.unbind('click').click(function(e) {
-              var params, selected;
-              annotate_id = $(e.currentTarget).data('annotate-id');
-              $marks = $annotatable_element.annotate('select', annotate_id, 'mark');
-              if (typeof settings.annotation.offTrigger === "function") {
-                selected = selectedAnnotations($annotatable_element);
-                flattenObject(selected).removeClass('annotate-selected');
-                settings.annotation.offTrigger.apply($annotatable_element[0], selected);
-              }
-              if (typeof settings.annotation.onTrigger === "function") {
-                params = [$marks, $annotatable_element.annotate('associated', $marks)];
+            }
+          });
+          break;
+        case 'click':
+          $annotatable_element.on('click', 'mark.annotated', function(e) {
+            var $selected_marks, annotate_id, params;
+            if ($annotatable_element.annotate('associated', $(this))[0] != null) {
+              annotate_id = getTopMarkId(e.currentTarget);
+              $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark');
+              if (typeof settings.mark.onTrigger === "function" && $(e.currentTarget).data('annotate-id') === annotate_id) {
+                e.stopPropagation();
+                params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)];
                 flattenObject(params).addClass('annotate-selected');
-                return settings.annotation.onTrigger.apply($annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]);
+                return settings.mark.onTrigger.apply($annotatable_element[0], params);
               }
-            });
-        }
+            }
+          });
       }
-      $annotations.find('.annotate-remove').unbind('click').click(function() {
+      switch (settings.annotation.trigger_type) {
+        case 'hover':
+          $(document).on('mouseenter', ".annotate-annotation[data-annotatable-id=" + settings._annotatable_id + "]", function(e) {
+            var $marks, annotate_id, params;
+            annotate_id = $(e.currentTarget).data('annotate-id');
+            $marks = $annotatable_element.annotate('select', annotate_id, 'mark');
+            if (typeof settings.annotation.onTrigger === "function") {
+              params = [$marks, $annotatable_element.annotate('associated', $marks)];
+              flattenObject(params).addClass('annotate-selected');
+              return settings.annotation.onTrigger.apply($annotatable_element[0], params);
+            }
+          });
+          $(document).on('mouseenter', ".annotate-annotation[data-annotatable-id=" + settings._annotatable_id + "]", function(e) {
+            var $marks, annotate_id, params;
+            annotate_id = $(e.currentTarget).data('annotate-id');
+            $marks = $annotatable_element.annotate('select', annotate_id, 'mark');
+            if (typeof settings.annotation.offTrigger === "function") {
+              params = [$marks, $annotatable_element.annotate('associated', $marks)];
+              flattenObject(params).removeClass('annotate-selected');
+              return settings.annotation.offTrigger.apply($annotatable_element[0], params);
+            }
+          });
+          break;
+        case 'click':
+          $(document).on('click', ".annotate-annotation[data-annotatable-id=" + settings._annotatable_id + "]", function(e) {
+            var $marks, annotate_id, params, selected;
+            annotate_id = $(e.currentTarget).data('annotate-id');
+            $marks = $annotatable_element.annotate('select', annotate_id, 'mark');
+            if (typeof settings.annotation.offTrigger === "function") {
+              selected = selectedAnnotations($annotatable_element);
+              flattenObject(selected).removeClass('annotate-selected');
+              settings.annotation.offTrigger.apply($annotatable_element[0], selected);
+            }
+            if (typeof settings.annotation.onTrigger === "function") {
+              params = [$marks, $annotatable_element.annotate('associated', $marks)];
+              flattenObject(params).addClass('annotate-selected');
+              return settings.annotation.onTrigger.apply($annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]);
+            }
+          });
+      }
+      $(document).on('click', '.annotate-remove', function() {
         return $annotatable_element.annotate('remove', $(this));
       });
-      $annotations.find('.annotate-revert').unbind('click').click(function() {
+      $(document).on('click', '.annotate-revert', function() {
         return $annotatable_element.annotate('revert', $(this));
       });
-      $annotations.find('form').unbind('submit').submit(function(e) {
+      $(document).on('click', '.annotate-removeall', function() {
+        return $annotatable_element.annotate('removeall');
+      });
+      $(document).on('click', '.annotate-destroy', function() {
+        return $annotatable_element.annotate('destroy');
+      });
+      $(document).on('click', '.annotate-build', function() {
+        return $annotatable_element.annotate('build');
+      });
+      $(document).on('click', '.annotate-cancel', function() {
+        return $annotatable_element.annotate('cancel');
+      });
+      $(document).on('submit', ".annotate-annotation[data-annotatable-id=" + settings._annotatable_id + "] form", function(e) {
         var form_data, response;
         settings = $annotatable_element.data();
         e.preventDefault();
-        form_data = serializeObject(this, {
+        form_data = serializeObject(e.currentTarget, {
           annotate_id: $($(this).parents('.annotate-annotation')[0]).data('annotate-id')
         });
         response = settings.annotation.update(form_data);
-        $marks = $annotatable_element.annotate('associated', $annotations);
         return renderSteps($annotatable_element, response, 'update');
       });
-      return $annotatable_element.unbind('mouseup').mouseup(function(e) {
-        var selected;
-        if (settings.mark.trigger_type === 'click' || settings.annotation.trigger_type === 'click') {
+      if (settings.mark.trigger_type === 'click' || settings.annotation.trigger_type === 'click') {
+        $annotatable_element.on('mouseup', function(e) {
+          var selected;
           selected = selectedAnnotations($annotatable_element);
           $(selected[0]).add(selected[1]).removeClass('annotate-selected');
-          settings.mark.offTrigger.apply($annotatable_element[0], selected);
-        }
+          return settings.mark.offTrigger.apply($annotatable_element[0], selected);
+        });
         if (settings.dialog.build_on_select) {
           if (!($(this).hasClass('annotate-dialog') || $(this).parents('.annotate-dialog').length > 0)) {
             return $annotatable_element.annotate('build');
           }
         }
-      });
+      }
     },
     cancel: function() {
       var $annotatable_element, annotatable_id, dialog, settings;
@@ -624,7 +616,7 @@
       tag_name = $(this).data('annotation').tag_name;
       $annotatable_element.find('mark.annotated').unbind();
       $("" + tag_name + "[data-annotatable-id=" + annotatable_id + "]").remove();
-      $annotatable_element.annotate('associated', $('mark.annotated', this)).remove();
+      $annotatable_element.annotate('associated', $annotatable_element.find('mark.annotated')).remove();
       return $annotatable_element.unbind('mouseup').removeData();
     },
     revert: function($elementOrId) {
@@ -747,9 +739,6 @@
             $dialog = settings.dialog.create.apply($annotatable_element[0]);
           }
           $dialog.attr('data-annotatable-id', settings._annotatable_id).find(':input:first').focus();
-          $dialog.find('.annotate-cancel').click(function() {
-            return $annotatable_element.annotate('cancel');
-          });
           if (typeof settings.dialog.afterCreate === "function") {
             settings.dialog.afterCreate.apply($annotatable_element[0], [$dialog]);
           }

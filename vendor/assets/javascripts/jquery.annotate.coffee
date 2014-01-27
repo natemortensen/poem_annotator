@@ -185,7 +185,6 @@
       $annotation.attr('data-annotatable-id', settings._annotatable_id)
 
       $marks.addClass('annotated').removeClass('temp')
-      $annotatable_element.annotate('_bindEvents', $marks)
       $annotatable_element.annotate('cancel')
       sendArticle($annotatable_element) unless action == 'revert'
       true
@@ -271,10 +270,7 @@
       $('mark.annotated', this).each ->
         $(this).removeClass('annotate-hidden') if hasAssociated $annotatable_element, $(this)
 
-      # bind buttons that conform to naming conventions
-      $('.annotate-removeall').click -> $annotatable_element.annotate('removeall')
-      $('.annotate-destroy').click -> $annotatable_element.annotate('destroy')
-      $('.annotate-build').click -> $annotatable_element.annotate('build')
+      $annotatable_element.annotate('_bindEvents')
 
       # display warnings unless explicitly ignored
       unless settings.ignore_warnings
@@ -359,99 +355,99 @@
           $annotation.hide(250)
 
     # bind hovers and actions
-    _bindEvents: ($mark = null) ->
+    _bindEvents: ->
       $annotatable_element = $(this)
       settings = $annotatable_element.data()
 
-      annotate_id = $mark.data('annotate-id')
-      $marks = $annotatable_element.find("mark[data-annotate-id=#{$mark.data('annotate-id')}]")
-      $annotations = $annotatable_element.annotate('associated', $marks)
-
       # bind marks based on trigger type
-      if $marks[0]? && settings.mark.trigger_type?
-        switch settings.mark.trigger_type
-          when 'hover'
-            $marks.each ->
-              if $annotatable_element.annotate('associated', $(this))[0]?
-                $(this).unbind('mouseenter mouseleave').hover((e) ->
-                  annotate_id = getTopMarkId(e.currentTarget)
-                  $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-                  if typeof settings.mark.onTrigger is "function" && $(e.currentTarget).data('annotate-id') == annotate_id
-                    params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
-                    flattenObject(params).addClass('annotate-selected')
-                    settings.mark.onTrigger.apply($annotatable_element[0], params)
-                , (e) ->
-                  annotate_id = $(e.currentTarget).data('annotate-id')
-                  $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-                  if typeof settings.mark.offTrigger is "function"
-                    params = [$marks, $annotatable_element.annotate('associated', $marks)]
-                    flattenObject(params).removeClass('annotate-selected')
-                    settings.mark.offTrigger.apply $annotatable_element[0], params
-                )
-          when 'click'
-            $marks.each ->
-              if $annotatable_element.annotate('associated', $(this))[0]?
-                $(this).unbind('click').click (e) ->                
-                  annotate_id = getTopMarkId(e.currentTarget)
-                  $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-                  if typeof settings.mark.onTrigger is "function" && $(e.currentTarget).data('annotate-id') == annotate_id
-                    e.stopPropagation()
-                    params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
-                    flattenObject(params).addClass('annotate-selected')
-                    settings.mark.onTrigger.apply($annotatable_element[0], params)
-      
-      # bind annotations based on trigger type
-      if $annotations[0]? && settings.annotation.trigger_type?
-        switch settings.annotation.trigger_type
-          when 'hover'
-            $annotations.unbind('mouseenter mouseleave').hover((e) ->
-              annotate_id = $(e.currentTarget).data('annotate-id')
-              $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-
-              if typeof settings.annotation.onTrigger is "function"
-                params = [$marks, $annotatable_element.annotate('associated', $marks)]
+      switch settings.mark.trigger_type
+        when 'hover'
+          $annotatable_element.on 'mouseenter', 'mark.annotated', (e) ->
+            if $annotatable_element.annotate('associated', $(this))[0]?
+              annotate_id = getTopMarkId(e.currentTarget)
+              $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark')
+              if typeof settings.mark.onTrigger is "function" && $(e.currentTarget).data('annotate-id') == annotate_id
+                params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
                 flattenObject(params).addClass('annotate-selected')
-                settings.annotation.onTrigger.apply $annotatable_element[0], params
-            , (e) ->
+                settings.mark.onTrigger.apply($annotatable_element[0], params)
+          $annotatable_element.on 'mouseleave', 'mark.annotated', (e) ->
+            if $annotatable_element.annotate('associated', $(this))[0]?
               annotate_id = $(e.currentTarget).data('annotate-id')
               $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-
-              if typeof settings.annotation.offTrigger is "function"
+              if typeof settings.mark.offTrigger is "function"
                 params = [$marks, $annotatable_element.annotate('associated', $marks)]
                 flattenObject(params).removeClass('annotate-selected')
-                settings.annotation.offTrigger.apply $annotatable_element[0], params
-            )
-          when 'click'
-            $annotations.unbind('click').click (e) ->
-              annotate_id = $(e.currentTarget).data('annotate-id')
-              $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
-              if typeof settings.annotation.offTrigger is "function"
-                selected = selectedAnnotations($annotatable_element)
-                flattenObject(selected).removeClass('annotate-selected')
-                settings.annotation.offTrigger.apply $annotatable_element[0], selected
-              if typeof settings.annotation.onTrigger is "function"
-                params = [$marks, $annotatable_element.annotate('associated', $marks)]
+                settings.manrk.offTrigger.apply $annotatable_element[0], params
+        when 'click'
+          $annotatable_element.on 'click', 'mark.annotated', (e) ->
+            if $annotatable_element.annotate('associated', $(this))[0]?             
+              annotate_id = getTopMarkId(e.currentTarget)
+              $selected_marks = $annotatable_element.annotate('select', annotate_id, 'mark')
+              if typeof settings.mark.onTrigger is "function" && $(e.currentTarget).data('annotate-id') == annotate_id
+                e.stopPropagation()
+                params = [$selected_marks, $annotatable_element.annotate('associated', $selected_marks)]
                 flattenObject(params).addClass('annotate-selected')
-                settings.annotation.onTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
+                settings.mark.onTrigger.apply($annotatable_element[0], params)
+      
+      # bind annotations based on trigger type
+      switch settings.annotation.trigger_type
+        when 'hover'
+          $(document).on 'mouseenter', ".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]", (e) ->
+            annotate_id = $(e.currentTarget).data('annotate-id')
+            $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
+
+            if typeof settings.annotation.onTrigger is "function"
+              params = [$marks, $annotatable_element.annotate('associated', $marks)]
+              flattenObject(params).addClass('annotate-selected')
+              settings.annotation.onTrigger.apply $annotatable_element[0], params
+          $(document).on 'mouseenter', ".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]", (e) ->
+            annotate_id = $(e.currentTarget).data('annotate-id')
+            $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
+
+            if typeof settings.annotation.offTrigger is "function"
+              params = [$marks, $annotatable_element.annotate('associated', $marks)]
+              flattenObject(params).removeClass('annotate-selected')
+              settings.annotation.offTrigger.apply $annotatable_element[0], params
+        when 'click'
+          $(document).on 'click', ".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}]", (e) ->
+            annotate_id = $(e.currentTarget).data('annotate-id')
+            $marks = $annotatable_element.annotate('select', annotate_id, 'mark')
+            if typeof settings.annotation.offTrigger is "function"
+              selected = selectedAnnotations($annotatable_element)
+              flattenObject(selected).removeClass('annotate-selected')
+              settings.annotation.offTrigger.apply $annotatable_element[0], selected
+            if typeof settings.annotation.onTrigger is "function"
+              params = [$marks, $annotatable_element.annotate('associated', $marks)]
+              flattenObject(params).addClass('annotate-selected')
+              settings.annotation.onTrigger.apply $annotatable_element[0], [$marks, $annotatable_element.annotate('associated', $marks)]
       
       # bind annotation buttons according to naming conventions
-      $annotations.find('.annotate-remove').unbind('click').click -> $annotatable_element.annotate('remove', $(this))
-      $annotations.find('.annotate-revert').unbind('click').click -> $annotatable_element.annotate('revert', $(this))
+      $(document).on 'click', '.annotate-remove', ->
+        $annotatable_element.annotate('remove', $(this))
+      $(document).on 'click', '.annotate-revert', ->
+        $annotatable_element.annotate('revert', $(this))
+      $(document).on 'click', '.annotate-removeall', ->
+        $annotatable_element.annotate('removeall')
+      $(document).on 'click', '.annotate-destroy', ->
+        $annotatable_element.annotate('destroy')
+      $(document).on 'click', '.annotate-build', ->
+        $annotatable_element.annotate('build')
+      $(document).on 'click', '.annotate-cancel', ->
+        $annotatable_element.annotate('cancel')
 
       # bind annotation form submit to update action
-      $annotations.find('form').unbind('submit').submit (e) ->
+      $(document).on 'submit', ".annotate-annotation[data-annotatable-id=#{settings._annotatable_id}] form", (e) ->
         settings = $annotatable_element.data()
         e.preventDefault()
 
-        form_data = serializeObject(this, {annotate_id: $($(this).parents('.annotate-annotation')[0]).data('annotate-id')})
+        form_data = serializeObject(e.currentTarget, {annotate_id: $($(this).parents('.annotate-annotation')[0]).data('annotate-id')})
         response = settings.annotation.update(form_data)
 
-        $marks = $annotatable_element.annotate('associated', $annotations)
         renderSteps($annotatable_element, response, 'update')
 
       # bind .annotate('build') to text-select event, if applicable
-      $annotatable_element.unbind('mouseup').mouseup (e) ->
-        if settings.mark.trigger_type == 'click' || settings.annotation.trigger_type == 'click'
+      if settings.mark.trigger_type == 'click' || settings.annotation.trigger_type == 'click'
+        $annotatable_element.on 'mouseup', (e) ->
           selected = selectedAnnotations($annotatable_element)
           $(selected[0]).add(selected[1]).removeClass('annotate-selected')
           settings.mark.offTrigger.apply $annotatable_element[0], selected
@@ -521,7 +517,7 @@
 
       $annotatable_element.find('mark.annotated').unbind()
       $("#{tag_name}[data-annotatable-id=#{annotatable_id}]").remove()
-      $annotatable_element.annotate('associated', $('mark.annotated', this)).remove()
+      $annotatable_element.annotate('associated', $annotatable_element.find('mark.annotated')).remove()
       $annotatable_element.unbind('mouseup').removeData()
 
     # re-render an annotation to undo an update
@@ -637,7 +633,6 @@
           $dialog = settings.dialog.create.apply($annotatable_element[0]) if typeof settings.dialog.create is "function"
 
           $dialog.attr('data-annotatable-id', settings._annotatable_id).find(':input:first').focus()
-          $dialog.find('.annotate-cancel').click -> $annotatable_element.annotate('cancel')
           settings.dialog.afterCreate.apply $annotatable_element[0], [$dialog] if typeof settings.dialog.afterCreate is "function"
           $dialog.keyup (e) -> $annotatable_element.annotate('cancel') if e.keyCode is 27
 

@@ -58,9 +58,28 @@ $(document).ready(function() {
 			ok(!$first_annotation.hasClass('annotate-selected'), "annotation does not have .annotate-selected class by default");
 			$first_annotation.trigger('click');
 			ok($first_annotation.hasClass('annotate-selected'), "clicking on an annotation adds .annotate-selected class");
-			window.$new_annotation = $annotatable_element.annotate('select', annotate_ids[1], settings.annotation.tag_name).trigger('click');
+			$annotatable_element.annotate('select', annotate_ids[1], settings.annotation.tag_name).trigger('click');
 			ok(!$first_annotation.hasClass('annotate-selected'), "clicking on another annotation removes .annotate-selected class");
 
+			$first_annotation.html('');
+	  	equal($first_annotation.html(), '', "annotation element is wiped clean");
+	  	equal($annotatable_element.annotate('revert', annotate_ids[0])[0], $annotatable_element[0], ".annotate('revert') returns $annotatable_element");
+	  	$new_annotation = $annotatable_element.annotate('select', annotate_ids[0], settings.annotation.tag_name)
+	  	ok($new_annotation.html() != '', ".annotate('revert') restores annotation element's content");
+
+	  	equal($annotatable_element.annotate('remove', annotate_ids[0])[0], $annotatable_element[0], ".annotate('remove') returns $annotatable_element");
+			ok(selectAllMatched($annotatable_element, annotate_ids[1]).length > 0, ".annotate('remove') only removes one annotation and its associated marks");
+			equal($annotatable_element.annotate('removeall')[0], $annotatable_element[0], ".annotate('removeall') returns $annotatable_element");
+			ok(selectAllMatched($annotatable_element, annotate_ids[1]).length == 0, ".annotate('removeall') removes all annotations and marks");
+
+			selectText($annotatable_element, type);
+	  	equal($annotatable_element.annotate('build')[0], $annotatable_element[0], ".annotate('build') returns $annotatable_element");
+	  	ok($('.annotate-dialog').length == 1, ".annotate('build') creates a dialog element");
+	  	ok($annotatable_element.find('mark.temp').length > 0, ".annotate('build') marks the article temporarily");
+	  	equal($annotatable_element.annotate('cancel')[0], $annotatable_element[0], ".annotate('build') returns $annotatable_element");
+	  	ok($('.annotate-dialog').length == 0, ".annotate('cancel') destroys any associated dialogs");
+	  	ok($annotatable_element.find('mark.temp').length == 0, ".annotate('cancel') removes any temporary marks");
+	  	$annotatable_element.annotate('destroy');
 	  	
 	  });
 	};
